@@ -39,53 +39,39 @@
 
 ### OpenClaw
 
-#### 共享 skills 目录
+请从这个远程地址安装一个 skill，并命名为 `ibook-builder`：
 
-macOS / Linux:
+https://github.com/Ibook000/ibook-skill/raw/main/SKILL.md
 
-```bash
-mkdir -p ~/.openclaw/skills/ibook-builder \
-&& curl -fsSL https://raw.githubusercontent.com/Ibook000/ibook-skill/main/SKILL.md \
--o ~/.openclaw/skills/ibook-builder/SKILL.md
-```
+要求：
 
-Windows PowerShell:
+1. 直接读取并导入这个 SKILL.md
+2. 安装后把它注册为可调用 skill
+3. 激活词包括：
 
-```powershell
-$dir = "$HOME/.openclaw/skills/ibook-builder"; New-Item -ItemType Directory -Force -Path $dir | Out-Null; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Ibook000/ibook-skill/main/SKILL.md" -OutFile "$dir/SKILL.md"
-```
+   * 用 ibook 的方式做
+   * 按 ibook 的思路拆
+   * 切到 ibook 模式
+   * 别空谈，直接给我能跑的版本
+4. 安装完成后，回复我是否安装成功，并给我一个测试示例
 
-#### 当前 workspace
-
-```bash
-mkdir -p ./skills/ibook-builder \
-&& curl -fsSL https://raw.githubusercontent.com/Ibook000/ibook-skill/main/SKILL.md \
--o ./skills/ibook-builder/SKILL.md
-```
-
-说明：
-
-- `openclaw skills install <slug>` 默认从 ClawHub 安装，不会直接从任意 GitHub URL 拉取
-- 如果以后发布到 ClawHub，再适合用 OpenClaw 的原生命令安装
-
-### Codex / ChatGPT 风格目录
-
-```text
-~/.codex/skills/ibook-builder/SKILL.md
-```
-
-### Claude 风格目录
-
-```text
-~/.claude/skills/ibook-builder/SKILL.md
-```
 
 ### 最简单的手动安装
 
 1. 新建目录 `ibook-builder`
 2. 把本仓库里的 [SKILL.md](./SKILL.md) 放进去
 3. 在对话里明确提到 `ibook` 或 `ibook-builder`
+### Codex 目录
 
+```text
+~/.codex/skills/ibook-builder/SKILL.md
+```
+
+### Claude 目录
+
+```text
+~/.claude/skills/ibook-builder/SKILL.md
+```
 ## 如何激活
 
 可以直接这样说：
