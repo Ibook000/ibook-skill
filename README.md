@@ -1,25 +1,8 @@
 # ibook-builder
 
-这是一个可直接使用的公开个人 `skill profile` 仓库。
+`ibook-builder` 是一个面向 AI coding agent 的公开 skill。
 
-它的目标不是只让别人“了解我”，而是让别人可以把 `ibook` 这套工程化工作方式直接装进自己的模型协作流程里。
-
-如果你想让模型更像一个偏工程落地的 builder，而不是只会讲概念，这个 skill 就是给你用的。
-
-## 这个 skill 会带来什么
-
-我主要聚焦这些方向：
-
-- AI 应用开发
-- Python 后端与 FastAPI
-- AI Agent / MCP / Skill / Tool Calling
-- 自动化工具与 Bot
-- 加密货币、量化交易、Polymarket 相关系统
-- Web 后台、前后端分离项目
-- ESP32 / AIoT / 语音交互 / 软硬件联动
-- Linux 部署、Systemd / Docker、日志与运维路径
-
-激活后，模型会默认更偏向这些行为：
+它蒸馏自 `ibook / Ibook000` 的实际工作方式，核心目标不是“像某个人说话”，而是让模型更稳定地表现出一种偏工程落地的 builder 风格：
 
 - 先给明确结论，再给实现路径
 - 先做最小可运行闭环，再谈优化
@@ -27,20 +10,63 @@
 - 能工具化就不只停在 prompt
 - 遇到复杂问题先拆模块，不空谈
 
+如果你想让模型更像一个会把想法做成系统的人，而不是只会给概念建议，这个 skill 就是给你用的。
+
 ## 适合什么任务
 
 - AI 应用开发
 - Python 后端、FastAPI、服务化工具
-- Agent / MCP / Skill / Tool Calling 设计
+- AI Agent / MCP / Skill / Tool Calling 设计
 - Discord Bot、自动化工具、工作流系统
 - 交易工具、量化策略、Polymarket / Binance / OKX 相关系统
 - Web 后台、前后端分离管理平台
 - ESP32 / AIoT / 语音交互 / 硬件联动
 - Linux 部署、Systemd / Docker、日志与运维
 
+## 这个 skill 的默认行为
+
+激活后，模型会默认更偏向这些行为：
+
+- 优先输出可执行方案，而不是泛泛建议
+- 优先跑通核心路径，而不是先追求“最优设计”
+- 默认补充文件结构、接口、配置、日志和部署要点
+- 复杂问题先拆成输入、状态、执行、存储、输出几个部分
+- 遇到交易或自动化问题时，优先把状态机、风控和异常恢复讲清楚
+
 ## 安装方式
 
-把这个仓库里的 `SKILL.md` 放到你的 skill 目录里即可。
+把本仓库里的 `SKILL.md` 放到你的 skill 目录里即可。
+
+### OpenClaw
+
+#### 共享 skills 目录
+
+macOS / Linux:
+
+```bash
+mkdir -p ~/.openclaw/skills/ibook-builder \
+&& curl -fsSL https://raw.githubusercontent.com/Ibook000/ibook-skill/main/SKILL.md \
+-o ~/.openclaw/skills/ibook-builder/SKILL.md
+```
+
+Windows PowerShell:
+
+```powershell
+$dir = "$HOME/.openclaw/skills/ibook-builder"; New-Item -ItemType Directory -Force -Path $dir | Out-Null; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Ibook000/ibook-skill/main/SKILL.md" -OutFile "$dir/SKILL.md"
+```
+
+#### 当前 workspace
+
+```bash
+mkdir -p ./skills/ibook-builder \
+&& curl -fsSL https://raw.githubusercontent.com/Ibook000/ibook-skill/main/SKILL.md \
+-o ./skills/ibook-builder/SKILL.md
+```
+
+说明：
+
+- `openclaw skills install <slug>` 默认从 ClawHub 安装，不会直接从任意 GitHub URL 拉取
+- 如果以后发布到 ClawHub，再适合用 OpenClaw 的原生命令安装
 
 ### Codex / ChatGPT 风格目录
 
@@ -54,7 +80,7 @@
 ~/.claude/skills/ibook-builder/SKILL.md
 ```
 
-### 最简单的做法
+### 最简单的手动安装
 
 1. 新建目录 `ibook-builder`
 2. 把本仓库里的 [SKILL.md](./SKILL.md) 放进去
@@ -70,7 +96,9 @@
 - `用 ibook 的方式，把这个 FastAPI + MCP 服务做成最小可部署版本`
 - `按 ibook-builder 思路，把这个交易策略整理成带风控的状态机`
 
-## 你会得到什么风格的输出
+## 输出风格
+
+使用这个 skill 后，你通常会得到这种风格的结果：
 
 - 更偏工程落地，而不是泛泛建议
 - 更偏系统闭环，而不是一次性 demo
@@ -79,9 +107,9 @@
 
 ## 仓库内容
 
-- [README.md](./README.md)：给人看的快速说明
-- [SKILL.md](./SKILL.md)：给人看也给模型直接使用的完整 skill
+- [README.md](./README.md): 给人看的快速说明
+- [SKILL.md](./SKILL.md): 给人看也给模型直接使用的完整 skill
 
 ## 一句话概括
 
-> 我更像一个偏工程落地的系统型 builder，关注的不只是把模型接上，而是把东西做成能跑、能部署、能维护的系统。
+> 一个偏工程落地的系统型 builder skill，关注的不只是把模型接上，而是把东西做成能跑、能部署、能维护的系统。
