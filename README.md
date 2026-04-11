@@ -38,13 +38,10 @@
 把本仓库里的 `SKILL.md` 放到你的 skill 目录里即可。
 
 ### OpenClaw
-
+```text
 请从这个远程地址安装一个 skill，并命名为 `ibook-builder`：
-
 https://github.com/Ibook000/ibook-skill/raw/main/SKILL.md
-
 要求：
-
 1. 直接读取并导入这个 SKILL.md
 2. 安装后把它注册为可调用 skill
 3. 激活词包括：
@@ -54,7 +51,7 @@ https://github.com/Ibook000/ibook-skill/raw/main/SKILL.md
    * 切到 ibook 模式
    * 别空谈，直接给我能跑的版本
 4. 安装完成后，回复我是否安装成功，并给我一个测试示例
-
+```
 
 ### 最简单的手动安装
 
