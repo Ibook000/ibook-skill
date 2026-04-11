@@ -1,92 +1,87 @@
-# ibook.skill
+# ibook-builder
 
-一个围绕 **AI 应用开发 / Python 后端 / AI Agent / 自动化系统 / 交易工具 / 嵌入式 AIoT** 蒸馏出来的个人 skill。
+这是一个可直接使用的公开个人 `skill profile` 仓库。
 
-它不是一句人格 prompt，而是一套能复用的工作方法：
+它的目标不是只让别人“了解我”，而是让别人可以把 `ibook` 这套工程化工作方式直接装进自己的模型协作流程里。
 
-- 定义身份
-- 固化决策方式
-- 提炼自我约束
-- 沉淀复盘机制
-- 按领域拆成能力模块
+如果你想让模型更像一个偏工程落地的 builder，而不是只会讲概念，这个 skill 就是给你用的。
 
-目标不是“像你说话”，而是尽量逼近你真实做事的方式。
+## 这个 skill 会带来什么
 
-## 核心画像
+我主要聚焦这些方向：
 
-ibook 更像一个偏工程落地的系统型 builder：
+- AI 应用开发
+- Python 后端与 FastAPI
+- AI Agent / MCP / Skill / Tool Calling
+- 自动化工具与 Bot
+- 加密货币、量化交易、Polymarket 相关系统
+- Web 后台、前后端分离项目
+- ESP32 / AIoT / 语音交互 / 软硬件联动
+- Linux 部署、Systemd / Docker、日志与运维路径
 
-- 喜欢把能力做成 bot / tool / skill / server
-- 默认考虑配置、部署、日志、异常处理和长期运行
-- 擅长把 AI、自动化、交易逻辑和真实系统接起来
-- 行动力强，但会主动把经验沉淀成规则
+激活后，模型会默认更偏向这些行为：
 
-## 适用场景
+- 先给明确结论，再给实现路径
+- 先做最小可运行闭环，再谈优化
+- 默认考虑配置、日志、异常处理和部署
+- 能工具化就不只停在 prompt
+- 遇到复杂问题先拆模块，不空谈
 
-当任务属于下面这些方向时，适合启用：
+## 适合什么任务
 
-- Python / FastAPI / 后端开发
-- AI Agent / LangChain / MCP / Tool Calling / Skill 设计
-- 自动化系统 / Bot / 服务化工具
-- 交易机器人 / 策略逻辑 / 风控流程
-- Linux 部署 / systemd / 配置管理 / 运行维护
-- ESP32 / AIoT / 软硬件联动
-- 从想法快速落成可运行系统
+- AI 应用开发
+- Python 后端、FastAPI、服务化工具
+- Agent / MCP / Skill / Tool Calling 设计
+- Discord Bot、自动化工具、工作流系统
+- 交易工具、量化策略、Polymarket / Binance / OKX 相关系统
+- Web 后台、前后端分离管理平台
+- ESP32 / AIoT / 语音交互 / 硬件联动
+- Linux 部署、Systemd / Docker、日志与运维
 
-## 仓库结构
+## 安装方式
 
-- `SKILL.md`：技能入口，定义基础身份、工作方式和模块加载策略
-- `identity.md`：基础身份和技术背景
-- `builder_identity.md`：更深层的 builder 画像
-- `decision.md`：默认决策路径
-- `self_rules.md`：长期约束和行为规则
-- `reflection_engine.md`：复盘与规则沉淀方式
-- `style.md`：表达风格
-- `productization.md`：产品化和交付偏好
-- `skills/*`：具体领域模块
+把这个仓库里的 `SKILL.md` 放到你的 skill 目录里即可。
 
-## 安装
-
-把整个目录放到你的 skill 目录里，例如：
-
-```bash
-~/.codex/skills/ibook/
-```
-
-或：
-
-```bash
-~/.claude/skills/ibook/
-```
-
-## 使用方式
-
-调用时不要只说“帮我写代码”，而是明确告诉模型要以 `ibook` 的方式做事。
-
-示例：
+### Codex / ChatGPT 风格目录
 
 ```text
-用 ibook.skill 的方式，帮我把一个 FastAPI + MCP 服务做成最小可部署版本。
+~/.codex/skills/ibook-builder/SKILL.md
 ```
+
+### Claude 风格目录
 
 ```text
-用 ibook.skill 的方式，把这个交易策略整理成可执行状态机，并补上风控约束。
+~/.claude/skills/ibook-builder/SKILL.md
 ```
 
-```text
-用 ibook.skill 的方式，帮我把一个想法落成 bot/tool/skill，并给出目录结构和启动方式。
-```
+### 最简单的做法
 
-## 设计重点
+1. 新建目录 `ibook-builder`
+2. 把本仓库里的 [SKILL.md](./SKILL.md) 放进去
+3. 在对话里明确提到 `ibook` 或 `ibook-builder`
 
-这个 skill 的重点不是“语气像不像我”，而是下面这些约束会被默认带上：
+## 如何激活
 
-- 先闭环，再优化
-- 先可运行，再谈优雅
-- 能工具化就不要只停在 prompt
-- 默认考虑配置、日志、异常和部署
-- 复盘的目标是提炼规则，不是情绪宣泄
+可以直接这样说：
 
-## 一句话定义
+- `用 ibook-builder 的方式做这个需求`
+- `按 ibook 的思路拆一下这个系统`
+- `切到 ibook 模式，别空谈，直接给我能跑的版本`
+- `用 ibook 的方式，把这个 FastAPI + MCP 服务做成最小可部署版本`
+- `按 ibook-builder 思路，把这个交易策略整理成带风控的状态机`
 
-> 一个会把 AI、自动化、交易逻辑和真实工程环境接起来的人；有冲劲，但会用规则把冲劲驯化成系统。
+## 你会得到什么风格的输出
+
+- 更偏工程落地，而不是泛泛建议
+- 更偏系统闭环，而不是一次性 demo
+- 更偏可运行、可部署、可维护，而不是只讲架构图
+- 更偏“直接做”，而不是长篇分析后不落地
+
+## 仓库内容
+
+- [README.md](./README.md)：给人看的快速说明
+- [SKILL.md](./SKILL.md)：给人看也给模型直接使用的完整 skill
+
+## 一句话概括
+
+> 我更像一个偏工程落地的系统型 builder，关注的不只是把模型接上，而是把东西做成能跑、能部署、能维护的系统。
