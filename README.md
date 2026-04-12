@@ -12,6 +12,18 @@
 
 如果你想让模型更像一个会把想法做成系统的人，而不是只会给概念建议，这个 skill 就是给你用的。
 
+## 技能目录
+
+这个仓库现在除了根目录的 `ibook-builder`，也开始收录可独立分享的其他 skill：
+
+- `ibook-builder`
+  根目录主 skill，偏工程落地、系统闭环、可运行交付。
+  安装文件：[SKILL.md](./SKILL.md)
+- `jiaoyiyuan-tony`
+  偏交易认知、趋势交易、资金管理与风控纪律的公开 skill。
+  说明页：[skills/jiaoyiyuan-tony/README.md](./skills/jiaoyiyuan-tony/README.md)
+  安装文件：[skills/jiaoyiyuan-tony/SKILL.md](./skills/jiaoyiyuan-tony/SKILL.md)
+
 ## 适合什么任务
 
 - AI 应用开发
@@ -92,6 +104,8 @@ https://github.com/Ibook000/ibook-skill/raw/main/SKILL.md
 
 - [README.md](./README.md): 给人看的快速说明
 - [SKILL.md](./SKILL.md): 给人看也给模型直接使用的完整 skill
+- [skills/jiaoyiyuan-tony/README.md](./skills/jiaoyiyuan-tony/README.md): Tony 交易员 skill 的公开说明
+- [skills/jiaoyiyuan-tony/SKILL.md](./skills/jiaoyiyuan-tony/SKILL.md): Tony 交易员 skill 的完整版本
 
 ## 一句话概括
 
