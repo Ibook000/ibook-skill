@@ -1,0 +1,431 @@
+# SVG Chart Snippets for Tweet Card Generator
+
+All charts are inline SVG — no external dependencies. They render perfectly in headless Chromium.
+Copy the relevant snippet into the `.chart-container` div in `card-template.html`.
+
+## 1. Horizontal Bar Chart (4-6 items)
+
+Best for: rankings, comparisons, market share breakdown.
+
+```svg
+<svg viewBox="0 0 480 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Replace these data values -->
+  <!-- bar_values = [85, 62, 48, 35, 22] -->
+  <!-- bar_labels = ['BTC', 'ETH', 'SOL', 'XAU', 'XAG'] -->
+  <!-- bar_colors = ['#f7931a', '#627eea', '#9945ff', '#c9a84c', '#a0a0a0'] -->
+
+  <!-- Grid lines -->
+  <line x1="120" y1="20" x2="120" y2="220" stroke="#e5e0d8" stroke-width="0.5"/>
+  <line x1="120" y1="20" x2="460" y2="20" stroke="#e5e0d8" stroke-width="0.5"/>
+  <line x1="120" y1="220" x2="460" y2="220" stroke="#e5e0d8" stroke-width="0.5"/>
+
+  <!-- Labels -->
+  <text x="0" y="60" font-family="sans-serif" font-size="13" fill="#6b6b6b" font-weight="500">BTC</text>
+  <rect x="120" y="46" width="289" height="18" rx="4" fill="#f7931a" opacity="0.9"/>
+  <text x="416" y="60" font-family="sans-serif" font-size="14" fill="#1a1a1a" font-weight="600" text-anchor="start">$79,733</text>
+
+  <text x="8" y="100" font-family="sans-serif" font-size="13" fill="#6b6b6b" font-weight="500">ETH</text>
+  <rect x="120" y="86" width="195" height="18" rx="4" fill="#627eea" opacity="0.9"/>
+  <text x="322" y="100" font-family="sans-serif" font-size="14" fill="#1a1a1a" font-weight="600" text-anchor="start">$5,240</text>
+
+  <text x="8" y="140" font-family="sans-serif" font-size="13" fill="#6b6b6b" font-weight="500">SOL</text>
+  <rect x="120" y="126" width="125" height="18" rx="4" fill="#9945ff" opacity="0.9"/>
+  <text x="252" y="140" font-family="sans-serif" font-size="14" fill="#1a1a1a" font-weight="600" text-anchor="start">$245</text>
+
+  <text x="3" y="180" font-family="sans-serif" font-size="13" fill="#6b6b6b" font-weight="500">XAU</text>
+  <rect x="120" y="166" width="245" height="18" rx="4" fill="#c9a84c" opacity="0.9"/>
+  <text x="372" y="180" font-family="sans-serif" font-size="14" fill="#1a1a1a" font-weight="600" text-anchor="start">$4,694</text>
+
+  <text x="3" y="220" font-family="sans-serif" font-size="13" fill="#6b6b6b" font-weight="500">XAG</text>
+  <rect x="120" y="206" width="60" height="18" rx="4" fill="#a0a0a0" opacity="0.9"/>
+  <text x="187" y="220" font-family="sans-serif" font-size="14" fill="#1a1a1a" font-weight="600" text-anchor="start">$87.6</text>
+</svg>
+```
+
+## 2. Vertical Bar Chart (5-8 items)
+
+Best for: time series, quarterly data, category comparison.
+
+```svg
+<svg viewBox="0 0 480 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- bars: x positions spaced evenly, heights proportional to values -->
+  <!-- Baseline at y=215, max bar height = 160px -->
+
+  <!-- Baseline -->
+  <line x1="30" y1="215" x2="470" y2="215" stroke="#d0cbc2" stroke-width="1"/>
+
+  <!-- Y-axis labels (light, subtle) -->
+  <text x="25" y="60" font-family="sans-serif" font-size="10" fill="#bbb" text-anchor="end">$5,000</text>
+  <text x="25" y="110" font-family="sans-serif" font-size="10" fill="#bbb" text-anchor="end">$3,500</text>
+  <text x="25" y="160" font-family="sans-serif" font-size="10" fill="#bbb" text-anchor="end">$2,000</text>
+
+  <!-- Bars (example: 6 bars, 60px apart, 32px wide) -->
+  <rect x="48" y="95" width="32" height="120" rx="3" fill="#2563eb" opacity="0.85"/>
+  <text x="64" y="225" font-family="sans-serif" font-size="11" fill="#6b6b6b" text-anchor="middle">Jan</text>
+
+  <rect x="108" y="115" width="32" height="100" rx="3" fill="#2563eb" opacity="0.85"/>
+  <text x="124" y="225" font-family="sans-serif" font-size="11" fill="#6b6b6b" text-anchor="middle">Feb</text>
+
+  <rect x="168" y="80" width="32" height="135" rx="3" fill="#2563eb" opacity="0.85"/>
+  <text x="184" y="225" font-family="sans-serif" font-size="11" fill="#6b6b6b" text-anchor="middle">Mar</text>
+
+  <rect x="228" y="65" width="32" height="150" rx="3" fill="#1d4ed8" opacity="0.90"/>
+  <text x="244" y="225" font-family="sans-serif" font-size="11" fill="#1a1a1a" font-weight="600" text-anchor="middle">Apr</text>
+
+  <rect x="288" y="50" width="32" height="165" rx="3" fill="#1e40af" opacity="0.90"/>
+  <text x="304" y="225" font-family="sans-serif" font-size="11" fill="#1a1a1a" font-weight="600" text-anchor="middle">May</text>
+
+  <rect x="348" y="35" width="32" height="180" rx="3" fill="#1e3a8a" opacity="0.92"/>
+  <text x="364" y="225" font-family="sans-serif" font-size="11" fill="#1a1a1a" font-weight="600" text-anchor="middle">Jun</text>
+</svg>
+```
+
+## 3. Sparkline (minimal line, 1 metric trend)
+
+Best for: price trends, growth curves, showing momentum.
+
+```svg
+<svg viewBox="0 0 480 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Replace the `d` path with your data points -->
+  <!-- Points are at x=0, 68, 137, 205, 274, 342, 411, 480 (evenly spaced) -->
+  <!-- Y values: 70 (top) to 10 (bottom) -->
+
+  <!-- Area fill -->
+  <path d="M0,60 L68,50 L137,55 L205,35 L274,25 L342,30 L411,15 L480,10 L480,80 L0,80 Z"
+        fill="#2563eb" opacity="0.10"/>
+
+  <!-- Line -->
+  <path d="M0,60 L68,50 L137,55 L205,35 L274,25 L342,30 L411,15 L480,10"
+        fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- End dot -->
+  <circle cx="480" cy="10" r="4" fill="#2563eb"/>
+
+  <!-- Start label -->
+  <text x="0" y="78" font-family="sans-serif" font-size="10" fill="#999">Jan</text>
+  <!-- End label -->
+  <text x="460" y="78" font-family="sans-serif" font-size="10" fill="#999" text-anchor="end">Jun</text>
+
+  <!-- Min/Max labels -->
+  <text x="274" y="18" font-family="sans-serif" font-size="10" fill="#6b6b6b" text-anchor="middle">+47%</text>
+</svg>
+```
+
+## 4. Donut / Percentage Ring
+
+Best for: market share, percentage metrics, allocation.
+
+```svg
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background ring -->
+  <circle cx="100" cy="100" r="70" fill="none" stroke="#e5e0d8" stroke-width="12"/>
+  <!-- Data ring: dasharray = circumference (2*π*70 ≈ 440) -->
+  <!-- dasharray = "percentage * 4.4, 440" -->
+  <!-- Example: 68% -->
+  <circle cx="100" cy="100" r="70" fill="none" stroke="#2563eb" stroke-width="12"
+          stroke-dasharray="299 440" stroke-linecap="round"
+          transform="rotate(-90 100 100)"/>
+  <!-- Center text -->
+  <text x="100" y="95" font-family="sans-serif" font-size="36" font-weight="700" fill="#1a1a1a" text-anchor="middle">68%</text>
+  <text x="100" y="118" font-family="sans-serif" font-size="12" fill="#6b6b6b" text-anchor="middle" font-weight="500">Market Share</text>
+</svg>
+```
+
+## 5. Mini Comparison (two side-by-side blocks)
+
+Best for: A vs B, before/after, this year vs last year.
+
+```svg
+<svg viewBox="0 0 480 140" xmlns="http://www.w3.org/2000/svg">
+  <!-- Left block -->
+  <rect x="10" y="0" width="220" height="140" rx="8" fill="#fff" stroke="#e5e0d8" stroke-width="1"/>
+  <text x="120" y="42" font-family="sans-serif" font-size="13" fill="#6b6b6b" text-anchor="middle" font-weight="500">2025 Q1</text>
+  <text x="120" y="82" font-family="sans-serif" font-size="32" font-weight="700" fill="#1a1a1a" text-anchor="middle">$2.4B</text>
+  <text x="120" y="112" font-family="sans-serif" font-size="12" fill="#999" text-anchor="middle">Revenue</text>
+
+  <!-- Right block -->
+  <rect x="250" y="0" width="220" height="140" rx="8" fill="#2563eb" opacity="0.06" stroke="#2563eb" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="360" y="42" font-family="sans-serif" font-size="13" fill="#6b6b6b" text-anchor="middle" font-weight="500">2026 Q1</text>
+  <text x="360" y="82" font-family="sans-serif" font-size="32" font-weight="700" fill="#2563eb" text-anchor="middle">$3.8B</text>
+  <text x="360" y="112" font-family="sans-serif" font-size="13" fill="#16a34a" text-anchor="middle" font-weight="600">↑ 58% YoY</text>
+
+  <!-- Arrow between -->
+  <line x1="235" y1="70" x2="245" y2="70" stroke="#d0cbc2" stroke-width="1.5"/>
+  <polygon points="245,65 252,70 245,75" fill="#d0cbc2"/>
+</svg>
+```
+
+## 6. Grouped Bars（两组对比柱状图）
+
+Best for: sector vs sector, before vs after, this year vs last.
+
+```svg
+<svg viewBox="0 0 440 200" xmlns="http://www.w3.org/2000/svg">
+  <line x1="55" y1="170" x2="420" y2="170" stroke="#d0cbc2" stroke-width="1"/>
+  <!-- Group 1 -->
+  <rect x="60" y="40" width="24" height="130" rx="3" fill="#2563eb" opacity="0.85"/>
+  <rect x="88" y="70" width="24" height="100" rx="3" fill="#93c5fd" opacity="0.85"/>
+  <text x="76" y="186" font-size="10" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">AI</text>
+  <!-- Group 2 -->
+  <rect x="140" y="80" width="24" height="90" rx="3" fill="#2563eb" opacity="0.85"/>
+  <rect x="168" y="110" width="24" height="60" rx="3" fill="#93c5fd" opacity="0.85"/>
+  <text x="156" y="186" font-size="10" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">DePIN</text>
+  <!-- Group 3 -->
+  <rect x="220" y="55" width="24" height="115" rx="3" fill="#2563eb" opacity="0.85"/>
+  <rect x="248" y="90" width="24" height="80" rx="3" fill="#93c5fd" opacity="0.85"/>
+  <text x="236" y="186" font-size="10" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">RWA</text>
+  <!-- Group 4 -->
+  <rect x="300" y="100" width="24" height="70" rx="3" fill="#2563eb" opacity="0.85"/>
+  <rect x="328" y="130" width="24" height="40" rx="3" fill="#93c5fd" opacity="0.85"/>
+  <text x="316" y="186" font-size="10" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">Meme</text>
+  <!-- Legend -->
+  <rect x="60" y="195" width="10" height="10" rx="2" fill="#2563eb" opacity="0.85"/>
+  <text x="74" y="204" font-size="10" fill="#6b6b6b" font-family="sans-serif">2025</text>
+  <rect x="120" y="195" width="10" height="10" rx="2" fill="#93c5fd" opacity="0.85"/>
+  <text x="134" y="204" font-size="10" fill="#6b6b6b" font-family="sans-serif">2024</text>
+</svg>
+```
+
+## 7. Waterfall（增减瀑布图）
+
+Best for: showing how a value changed step by step (revenue bridge, cost breakdown).
+
+```svg
+<svg viewBox="0 0 440 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Total: starts at y=160, height=30 (small, starting point) -->
+  <rect x="30" y="130" width="40" height="40" rx="3" fill="#2563eb" opacity="0.85"/>
+  <text x="50" y="124" font-size="10" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">$2.4B</text>
+  <text x="50" y="185" font-size="9" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">Q1</text>
+
+  <!-- +Growth connector -->
+  <line x1="70" y1="150" x2="95" y2="150" stroke="#d0cbc2" stroke-width="1"/>
+
+  <!-- Gain block: green, y=70, height=60 -->
+  <rect x="95" y="60" width="40" height="110" rx="3" fill="#16a34a" opacity="0.80"/>
+  <text x="115" y="54" font-size="10" fill="#16a34a" text-anchor="middle" font-family="sans-serif">+$0.8B</text>
+  <text x="115" y="185" font-size="9" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">AI</text>
+
+  <line x1="135" y1="115" x2="160" y2="115" stroke="#d0cbc2" stroke-width="1"/>
+
+  <!-- Another gain -->
+  <rect x="160" y="40" width="40" height="130" rx="3" fill="#16a34a" opacity="0.80"/>
+  <text x="180" y="34" font-size="10" fill="#16a34a" text-anchor="middle" font-family="sans-serif">+$1.2B</text>
+  <text x="180" y="185" font-size="9" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">Cloud</text>
+
+  <line x1="200" y1="105" x2="225" y2="105" stroke="#d0cbc2" stroke-width="1"/>
+
+  <!-- Loss block: red, starts at accumulated position -->
+  <rect x="225" y="110" width="40" height="60" rx="3" fill="#dc2626" opacity="0.75"/>
+  <text x="245" y="104" font-size="10" fill="#dc2626" text-anchor="middle" font-family="sans-serif">-$0.4B</text>
+  <text x="245" y="185" font-size="9" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">China</text>
+
+  <line x1="265" y1="140" x2="290" y2="140" stroke="#d0cbc2" stroke-width="1"/>
+
+  <!-- Final total -->
+  <rect x="290" y="60" width="40" height="110" rx="3" fill="#1e3a8a" opacity="0.90"/>
+  <text x="310" y="54" font-size="10" fill="#1e3a8a" text-anchor="middle" font-family="sans-serif" font-weight="700">$4.0B</text>
+  <text x="310" y="185" font-size="9" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">Total</text>
+</svg>
+```
+
+## 8. Progress / Gauge Row (3 items)
+
+Best for: adoption metrics, completion rates, progress indicators.
+
+```svg
+<svg viewBox="0 0 480 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Item 1 -->
+  <text x="0" y="24" font-family="sans-serif" font-size="13" fill="#6b6b6b" font-weight="500">Institutional</text>
+  <rect x="0" y="32" width="480" height="8" rx="4" fill="#e5e0d8"/>
+  <rect x="0" y="32" width="336" height="8" rx="4" fill="#2563eb"/>
+  <text x="480" y="24" font-family="sans-serif" font-size="13" fill="#1a1a1a" font-weight="600" text-anchor="end">70%</text>
+
+  <!-- Item 2 -->
+  <text x="0" y="70" font-family="sans-serif" font-size="13" fill="#6b6b6b" font-weight="500">Retail</text>
+  <rect x="0" y="78" width="480" height="8" rx="4" fill="#e5e0d8"/>
+  <rect x="0" y="78" width="240" height="8" rx="4" fill="#2563eb"/>
+  <text x="480" y="70" font-family="sans-serif" font-size="13" fill="#1a1a1a" font-weight="600" text-anchor="end">50%</text>
+
+  <!-- Item 3 -->
+  <text x="0" y="116" font-family="sans-serif" font-size="13" fill="#6b6b6b" font-weight="500">Sovereign</text>
+  <rect x="0" y="124" width="480" height="8" rx="4" fill="#e5e0d8"/>
+  <rect x="0" y="124" width="96" height="8" rx="4" fill="#dc2626"/>
+  <text x="480" y="116" font-family="sans-serif" font-size="13" fill="#dc2626" font-weight="600" text-anchor="end">20%</text>
+</svg>
+```
+
+## 9. Pie Chart（饼图）
+
+Best for: composition, market share, portfolio allocation. SVG pie via circle dasharray.
+
+```svg
+<svg viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Total circumference: 2*π*60 ≈ 377 -->
+  <!-- Segment 1: 45% → dasharray="170 377" -->
+  <circle cx="90" cy="100" r="60" fill="none" stroke="#7c3aed" stroke-width="40"
+    stroke-dasharray="170 377" stroke-dashoffset="0" transform="rotate(-90 90 100)"/>
+
+  <!-- Segment 2: 30% → starts after seg1 -->
+  <circle cx="90" cy="100" r="60" fill="none" stroke="#2563eb" stroke-width="40"
+    stroke-dasharray="113 377" stroke-dashoffset="-170" transform="rotate(-90 90 100)"/>
+
+  <!-- Segment 3: 15% -->
+  <circle cx="90" cy="100" r="60" fill="none" stroke="#059669" stroke-width="40"
+    stroke-dasharray="57 377" stroke-dashoffset="-283" transform="rotate(-90 90 100)"/>
+
+  <!-- Segment 4: 10% -->
+  <circle cx="90" cy="100" r="60" fill="none" stroke="#d97706" stroke-width="40"
+    stroke-dasharray="37 377" stroke-dashoffset="-340" transform="rotate(-90 90 100)"/>
+
+  <!-- Legend -->
+  <rect x="175" y="58" width="8" height="8" rx="2" fill="#7c3aed"/><text x="188" y="66" font-size="9" fill="#555" font-family="sans-serif">AI 45%</text>
+  <rect x="175" y="78" width="8" height="8" rx="2" fill="#2563eb"/><text x="188" y="86" font-size="9" fill="#555" font-family="sans-serif">DePIN 30%</text>
+  <rect x="175" y="98" width="8" height="8" rx="2" fill="#059669"/><text x="188" y="106" font-size="9" fill="#555" font-family="sans-serif">RWA 15%</text>
+  <rect x="175" y="118" width="8" height="8" rx="2" fill="#d97706"/><text x="188" y="126" font-size="9" fill="#555" font-family="sans-serif">Other 10%</text>
+</svg>
+```
+
+## 10. Flow Diagram（流程图 / 资金链路图）
+
+Best for: supply chains, money flows, process steps, organizational structure.
+
+```svg
+<svg viewBox="0 0 460 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ar" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+      <path d="M0,0 L7,2.5 L0,5 Z" fill="#c4bdb3"/>
+    </marker>
+  </defs>
+
+  <!-- Node 1 -->
+  <rect x="10" y="10" width="100" height="42" rx="6" fill="#fff" stroke="#d0cbc2" stroke-width="1.2"/>
+  <text x="60" y="30" font-size="10" fill="#888" font-family="sans-serif" text-anchor="middle" font-weight="600">资金来源</text>
+  <text x="60" y="44" font-size="12" fill="#1a1a1a" font-family="sans-serif" text-anchor="middle" font-weight="700">Alibaba</text>
+
+  <line x1="110" y1="31" x2="148" y2="31" stroke="#c4bdb3" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Node 2 -->
+  <rect x="155" y="10" width="110" height="42" rx="6" fill="#fff" stroke="#d0cbc2" stroke-width="1.2"/>
+  <text x="210" y="30" font-size="10" fill="#888" font-family="sans-serif" text-anchor="middle" font-weight="600">预付款 $41B</text>
+  <text x="210" y="44" font-size="12" fill="#1a1a1a" font-family="sans-serif" text-anchor="middle" font-weight="700">Apex</text>
+
+  <line x1="265" y1="31" x2="303" y2="31" stroke="#c4bdb3" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Node 3 -->
+  <rect x="310" y="10" width="130" height="42" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1.2"/>
+  <text x="375" y="30" font-size="10" fill="#888" font-family="sans-serif" text-anchor="middle" font-weight="600">押金 $29B</text>
+  <text x="375" y="44" font-size="12" fill="#dc2626" font-family="sans-serif" text-anchor="middle" font-weight="700">Megaspeed</text>
+
+  <!-- Arrow down to row 2 -->
+  <line x1="375" y1="52" x2="375" y2="78" stroke="#c4bdb3" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Node 4 -->
+  <rect x="310" y="82" width="130" height="42" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1.2"/>
+  <text x="375" y="102" font-size="10" fill="#888" font-family="sans-serif" text-anchor="middle" font-weight="600">应收款 $29B</text>
+  <text x="375" y="116" font-size="12" fill="#dc2626" font-family="sans-serif" text-anchor="middle" font-weight="700">Speedmatrix</text>
+
+  <line x1="310" y1="103" x2="170" y2="180" stroke="#c4bdb3" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Node 5 -->
+  <rect x="40" y="162" width="130" height="42" rx="6" fill="#fffbeb" stroke="#d97706" stroke-width="1.2"/>
+  <text x="105" y="182" font-size="10" fill="#888" font-family="sans-serif" text-anchor="middle" font-weight="600">OEM 进口 $40B</text>
+  <text x="105" y="196" font-size="12" fill="#d97706" font-family="sans-serif" text-anchor="middle" font-weight="700">Aivres</text>
+
+  <line x1="170" y1="183" x2="258" y2="183" stroke="#c4bdb3" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Node 6 -->
+  <rect x="265" y="162" width="120" height="42" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
+  <text x="325" y="182" font-size="10" fill="#888" font-family="sans-serif" text-anchor="middle" font-weight="600">财报：美国收入</text>
+  <text x="325" y="196" font-size="12" fill="#16a34a" font-family="sans-serif" text-anchor="middle" font-weight="700">NVIDIA</text>
+
+  <!-- DOJ footnote -->
+  <rect x="80" y="240" width="300" height="28" rx="4" fill="#fff" stroke="#e5e0d8" stroke-width="1"/>
+  <text x="230" y="258" font-size="9" fill="#888" font-family="sans-serif" text-anchor="middle">⚖️ DOJ 2026.03: Supermicro 案 — $25B+ 芯片经东南亚走私至中国</text>
+</svg>
+```
+
+## 11. Stacked Bar（堆叠柱状图）
+
+Best for: showing composition within total, part-to-whole across categories.
+
+```svg
+<svg viewBox="0 0 440 220" xmlns="http://www.w3.org/2000/svg">
+  <line x1="55" y1="195" x2="420" y2="195" stroke="#d0cbc2" stroke-width="1"/>
+
+  <!-- Q1: total 180 -->
+  <rect x="70" y="35" width="40" height="50" rx="2" fill="#7c3aed" opacity="0.85"/>
+  <rect x="70" y="85" width="40" height="50" rx="2" fill="#2563eb" opacity="0.85"/>
+  <rect x="70" y="135" width="40" height="60" rx="2" fill="#93c5fd" opacity="0.85"/>
+  <text x="90" y="212" font-size="9" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">Q1</text>
+
+  <!-- Q2: total 195 -->
+  <rect x="145" y="30" width="40" height="55" rx="2" fill="#7c3aed" opacity="0.85"/>
+  <rect x="145" y="85" width="40" height="55" rx="2" fill="#2563eb" opacity="0.85"/>
+  <rect x="145" y="140" width="40" height="55" rx="2" fill="#93c5fd" opacity="0.85"/>
+  <text x="165" y="212" font-size="9" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">Q2</text>
+
+  <!-- Q3: total 210 -->
+  <rect x="220" y="25" width="40" height="60" rx="2" fill="#7c3aed" opacity="0.88"/>
+  <rect x="220" y="85" width="40" height="55" rx="2" fill="#2563eb" opacity="0.88"/>
+  <rect x="220" y="140" width="40" height="55" rx="2" fill="#93c5fd" opacity="0.88"/>
+  <text x="240" y="212" font-size="9" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">Q3</text>
+
+  <!-- Q4: total 225 -->
+  <rect x="295" y="20" width="40" height="65" rx="2" fill="#7c3aed" opacity="0.90"/>
+  <rect x="295" y="85" width="40" height="55" rx="2" fill="#2563eb" opacity="0.90"/>
+  <rect x="295" y="140" width="40" height="55" rx="2" fill="#93c5fd" opacity="0.90"/>
+  <text x="315" y="212" font-size="9" fill="#6b6b6b" text-anchor="middle" font-family="sans-serif">Q4</text>
+
+  <!-- Legend -->
+  <rect x="355" y="30" width="10" height="10" rx="2" fill="#7c3aed" opacity="0.85"/>
+  <text x="370" y="39" font-size="9" fill="#6b6b6b" font-family="sans-serif">AI</text>
+  <rect x="355" y="50" width="10" height="10" rx="2" fill="#2563eb" opacity="0.85"/>
+  <text x="370" y="59" font-size="9" fill="#6b6b6b" font-family="sans-serif">Cloud</text>
+  <rect x="355" y="70" width="10" height="10" rx="2" fill="#93c5fd" opacity="0.85"/>
+  <text x="370" y="79" font-size="9" fill="#6b6b6b" font-family="sans-serif">Other</text>
+</svg>
+```
+
+## 12. Area Chart（面积图）
+
+Best for: cumulative trends, volume over time, sentiment shift.
+
+```svg
+<svg viewBox="0 0 400 160" xmlns="http://www.w3.org/2000/svg">
+  <!-- Area fill -->
+  <path d="M10,140 L10,120 L60,100 L110,110 L160,80 L210,90 L260,55 L310,65 L360,30 L390,25 L390,150 Z"
+    fill="#2563eb" opacity="0.12"/>
+  <!-- Line -->
+  <path d="M10,120 L60,100 L110,110 L160,80 L210,90 L260,55 L310,65 L360,30 L390,25"
+    fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- End dot -->
+  <circle cx="390" cy="25" r="5" fill="#2563eb"/><circle cx="390" cy="25" r="2" fill="#fff"/>
+  <!-- Labels -->
+  <text x="10" y="152" font-size="9" fill="#999" font-family="sans-serif">Jan</text>
+  <text x="375" y="152" font-size="9" fill="#999" font-family="sans-serif" text-anchor="end">Dec</text>
+  <!-- Peak annotation -->
+  <line x1="160" y1="60" x2="160" y2="80" stroke="#d0cbc2" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="160" y="56" font-size="9" fill="#6b6b6b" font-family="sans-serif" text-anchor="middle">▲ Peak</text>
+  <!-- Growth label -->
+  <text x="390" y="18" font-size="10" fill="#16a34a" font-family="sans-serif" font-weight="700" text-anchor="end">+340%</text>
+</svg>
+```
+
+---
+
+## Quick Reference: Which Chart When
+
+| 数据类型 | 推荐图表 | 编号 |
+|----------|----------|:--:|
+| 排名 / 份额 | Horizontal Bars | #1 |
+| 时间序列 | Vertical Bars / Area | #2 / #12 |
+| 趋势线 | Sparkline / Area | #3 / #12 |
+| 百分比 | Donut Ring / Pie | #4 / #9 |
+| A vs B 对比 | Mini Comparison / Grouped Bars | #5 / #6 |
+| 进度 / 达成率 | Progress Bars | #8 |
+| 增减分解 | Waterfall | #7 |
+| 构成 / 组成 | Stacked Bar / Pie | #11 / #9 |
+| 流程 / 链路 | Flow Diagram | #10 |
+| 多组对比 | Grouped Bars | #6 |
+
+## 12. Area Chart（面积图）

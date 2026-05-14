@@ -23,6 +23,10 @@
   偏交易认知、趋势交易、资金管理与风控纪律的公开 skill。
   说明页：[skills/jiaoyiyuan-tony/README.md](./skills/jiaoyiyuan-tony/README.md)
   安装文件：[skills/jiaoyiyuan-tony/SKILL.md](./skills/jiaoyiyuan-tony/SKILL.md)
+- `tweet-card-generator`
+  给定主题自动搜索 → 生成推文 + 高密度数据卡片 PNG（HTML 渲染 → 截图）。
+  12 种 SVG 图表（饼图/流程图/堆叠柱/面积图等），4 种布局，米白底色 + @IBO0OK 水印。
+  安装文件：[skills/tweet-card-generator/SKILL.md](./skills/tweet-card-generator/SKILL.md)
 
 ## 适合什么任务
 
@@ -103,9 +107,9 @@ https://github.com/Ibook000/ibook-skill/raw/main/SKILL.md
 ## 仓库内容
 
 - [README.md](./README.md): 给人看的快速说明
-- [SKILL.md](./SKILL.md): 给人看也给模型直接使用的完整 skill
-- [skills/jiaoyiyuan-tony/README.md](./skills/jiaoyiyuan-tony/README.md): Tony 交易员 skill 的公开说明
-- [skills/jiaoyiyuan-tony/SKILL.md](./skills/jiaoyiyuan-tony/SKILL.md): Tony 交易员 skill 的完整版本
+- [SKILL.md](./SKILL.md): ibook-builder 主 skill
+- [skills/jiaoyiyuan-tony/](./skills/jiaoyiyuan-tony/): Tony 交易员 skill
+- [skills/tweet-card-generator/](./skills/tweet-card-generator/): 推特卡片生成器（12 图表 × 4 布局）
 
 ## 一句话概括
 
