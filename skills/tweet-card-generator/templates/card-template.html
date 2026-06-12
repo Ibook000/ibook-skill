@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --bg: #FAF8F5; --text: #1a1a1a; --t2: #6b6b6b; --t3: #999;
+    --border: #e5e0d8; --border-light: #f0ebe0;
+    --accent: #2563eb; --accent-bg: #dbeafe;
+    --red: #dc2626; --green: #16a34a; --amber: #d97706;
+    --w: 1200px; --h: 675px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width:var(--w); height:var(--h); background:var(--bg); overflow:hidden; position:relative;
+    font-family: -apple-system, 'WenQuanYi Micro Hei', 'PingFang SC', 'Helvetica Neue', sans-serif;
+    color:var(--text); font-variant-numeric:tabular-nums;
+  }
+  body::after {
+    content:'@IBO0OK'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:180px; font-weight:800; color:rgba(0,0,0,0.06);
+    font-family:-apple-system,'Helvetica Neue','Arial Black',sans-serif; letter-spacing:.06em;
+    pointer-events:none; z-index:0; white-space:nowrap; user-select:none;
+  }
+
+  /* SHARED */
+  .card { position:relative; z-index:1; width:100%; height:100%; display:flex; flex-direction:column; }
+  .header { display:flex; align-items:baseline; justify-content:space-between; padding:32px 40px 0; flex-shrink:0; }
+  .tag { font-size:11px; font-weight:700; letter-spacing:.14em; padding:3px 10px; border-radius:4px; }
+  .tag-r { color:var(--red); background:#fef2f2; } .tag-b { color:#2563eb; background:#dbeafe; }
+  .tag-p { color:#7c3aed; background:#ede9fe; } .tag-g { color:#059669; background:#ecfdf5; }
+  .tag-a { color:#d97706; background:#fffbeb; }
+  .date { font-size:12px; color:var(--t2); }
+  .body { flex:1; min-height:0; }
+  .footer { display:flex; align-items:center; justify-content:space-between; padding:8px 40px 16px; border-top:1px solid var(--border); flex-shrink:0; }
+  .source { font-size:10px; color:var(--t3); }
+  .wm { font-size:10px; color:#ccc; }
+
+  /* LAYOUT A: SPLIT (left metrics + right chart) */
+  .la { display:grid; grid-template-columns:460px 1fr; height:100%; padding:14px 40px 0; }
+  .la-L { display:flex; flex-direction:column; justify-content:center; gap:18px; padding-right:28px; border-right:1px solid var(--border); }
+  .la-R { display:flex; flex-direction:column; justify-content:center; padding-left:28px; }
+  .m-label { font-size:11px; color:var(--t2); font-weight:600; letter-spacing:.04em; }
+  .m-val { font-size:38px; font-weight:700; line-height:1.1; letter-spacing:-.02em; }
+  .m-sub { font-size:11px; color:var(--t2); margin-top:2px; line-height:1.45; }
+  .ch-title { font-size:11px; font-weight:600; color:var(--t2); letter-spacing:.06em; margin-bottom:6px; }
+  .ch-wrap { flex:1; min-height:0; }
+  .ch-wrap svg { width:100%; height:100%; }
+
+  /* LAYOUT B: STACKED (hero number + 3 columns) */
+  .lb { display:flex; flex-direction:column; height:100%; padding:8px 40px 0; }
+  .lb-hero { text-align:center; padding:6px 0 12px; border-bottom:1px solid var(--border); }
+  .lb-hero-num { font-size:52px; font-weight:800; letter-spacing:-.03em; line-height:1; }
+  .lb-hero-sub { font-size:13px; color:var(--t2); margin-top:4px; font-weight:500; }
+  .lb-cols { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; flex:1; padding:12px 0; }
+  .lb-col { display:flex; flex-direction:column; gap:8px; }
+  .lb-col-h { font-size:12px; font-weight:700; color:var(--t2); letter-spacing:.04em; padding-bottom:5px; border-bottom:2px solid var(--accent); }
+  .lb-col-num { font-size:20px; font-weight:700; display:block; }
+  .lb-col-txt { font-size:11px; line-height:1.5; color:var(--t2); }
+  .lb-col-ch { flex:1; min-height:50px; }
+  .lb-col-ch svg { width:100%; height:100%; }
+
+  /* LAYOUT C: BIG NUMBER (centered hero) */
+  .lc { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; height:100%; padding:0 60px; }
+  .lc-num { font-size:96px; font-weight:800; letter-spacing:-.04em; line-height:1; }
+  .lc-ctx { font-size:14px; color:var(--t2); font-weight:500; max-width:620px; text-align:center; line-height:1.5; }
+  .lc-row { display:flex; gap:36px; margin-top:4px; }
+  .lc-mini { text-align:center; }
+  .lc-mini-n { font-size:26px; font-weight:700; }
+  .lc-mini-l { font-size:11px; color:var(--t2); margin-top:2px; }
+
+  /* LAYOUT D: TIMELINE */
+  .ld { display:grid; grid-template-columns:300px 1fr; height:100%; padding:12px 40px 0; }
+  .ld-L { display:flex; flex-direction:column; gap:0; padding-right:20px; border-right:1px solid var(--border); overflow:hidden; }
+  .ld-node { display:flex; align-items:flex-start; gap:10px; padding:8px 0; }
+  .ld-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+  .ld-dot-on { background:var(--accent); box-shadow:0 0 0 4px var(--accent-bg); }
+  .ld-dot-off { background:#d0cbc2; }
+  .ld-t { font-size:10px; color:var(--t3); font-weight:600; min-width:46px; }
+  .ld-txt { font-size:12px; font-weight:600; line-height:1.4; }
+  .ld-sub { font-size:10px; color:var(--t2); font-weight:400; }
+  .ld-R { display:flex; flex-direction:column; justify-content:center; padding-left:28px; }
+  .ld-hl { background:#fff; border:1px solid var(--border); border-radius:6px; padding:18px 22px; }
+  .ld-hl-h { font-size:11px; color:var(--t2); font-weight:600; letter-spacing:.04em; margin-bottom:8px; }
+  .ld-hl-v { font-size:34px; font-weight:700; }
+  .ld-hl-s { font-size:12px; color:var(--t2); margin-top:4px; }
+
+  .cr { color:var(--red); } .cg { color:var(--green); }
+  .cb { color:#2563eb; } .cp { color:#7c3aed; } .ca { color:#d97706; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <span class="tag tag-b">TAG</span>
+    <span class="date">DATE</span>
+  </div>
+
+  <!-- ▸ LAYOUT A: SPLIT -->
+  <div class="body la">
+    <div class="la-L">
+      <div><div class="m-label">METRIC 1</div><div class="m-val cb">VALUE</div><div class="m-sub">CONTEXT</div></div>
+      <div><div class="m-label">METRIC 2</div><div class="m-val">VALUE</div><div class="m-sub">CONTEXT</div></div>
+      <div><div class="m-label">METRIC 3</div><div class="m-val">VALUE</div><div class="m-sub">CONTEXT</div></div>
+    </div>
+    <div class="la-R">
+      <div class="ch-title">CHART TITLE</div>
+      <div class="ch-wrap"><!-- SVG CHART HERE --></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="source">SOURCES</span>
+    <span class="wm">@IBO0OK</span>
+  </div>
+</div>
+</body>
+</html>

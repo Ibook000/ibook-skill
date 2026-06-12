@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --bg: #FAF8F5; --text: #1a1a1a; --t2: #555; --t3: #888;
+    --border: #e5e0d8; --border-light: #f0ebe0;
+    --accent: #2563eb;
+    --red: #dc2626; --green: #16a34a; --amber: #d97706; --purple: #7c3aed;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width:1200px; height:675px; background:var(--bg); overflow:hidden; position:relative;
+    font-family: -apple-system, 'WenQuanYi Micro Hei', 'PingFang SC', 'Helvetica Neue', sans-serif;
+    color:var(--text); font-variant-numeric:tabular-nums; font-weight:500;
+  }
+  body::after {
+    content:'@IBO0OK'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:180px; font-weight:800; color:rgba(0,0,0,0.055);
+    font-family:-apple-system,'Helvetica Neue','Arial Black',sans-serif; letter-spacing:.06em;
+    pointer-events:none; z-index:0; white-space:nowrap; user-select:none;
+  }
+  .card { position:relative; z-index:1; width:100%; height:100%; display:flex; flex-direction:column; }
+
+  /* ── HEADER (compact) ── */
+  .hd { display:flex; align-items:baseline; justify-content:space-between; padding:20px 28px 0; flex-shrink:0; }
+  .hd-tag { font-size:10px; font-weight:700; letter-spacing:.14em; padding:2px 8px; border-radius:3px; }
+  .hd-tag-r { color:var(--red); background:#fef2f2; } .hd-tag-b { color:#2563eb; background:#dbeafe; }
+  .hd-tag-p { color:var(--purple); background:#ede9fe; } .hd-tag-g { color:#059669; background:#ecfdf5; }
+  .hd-tag-a { color:var(--amber); background:#fffbeb; }
+  .hd-date { font-size:10px; color:var(--t3); font-weight:400; }
+  .hd-sub { font-size:11px; color:var(--t2); margin-left:8px; font-weight:400; }
+
+  /* ── BODY (flexible grid) ── */
+  .bd { flex:1; min-height:0; padding:10px 28px 4px; display:flex; flex-direction:column; gap:10px; }
+
+  /* ▸ 3-COLUMN ROW */
+  .r3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  .r21 { display:grid; grid-template-columns:2fr 1fr; gap:14px; }
+  .r12 { display:grid; grid-template-columns:1fr 2fr; gap:14px; }
+
+  /* ▸ METRIC BLOCK */
+  .m { display:flex; flex-direction:column; gap:1px; }
+  .m-l { font-size:9.5px; color:var(--t3); font-weight:600; letter-spacing:.05em; text-transform:uppercase; }
+  .m-v { font-size:28px; font-weight:700; line-height:1.05; letter-spacing:-.02em; }
+  .m-v-sm { font-size:20px; font-weight:700; line-height:1.05; letter-spacing:-.01em; }
+  .m-s { font-size:10px; color:var(--t3); line-height:1.4; }
+  .m-ch { display:inline-block; font-size:11px; font-weight:600; margin-left:3px; }
+  .up { color:var(--green); } .dn { color:var(--red); }
+
+  /* ▸ SECTION BOX */
+  .box { background:#fff; border:1px solid var(--border-light); border-radius:5px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+  .box-h { font-size:10px; font-weight:700; color:var(--t3); letter-spacing:.05em; text-transform:uppercase; }
+  .box-row { display:flex; justify-content:space-between; align-items:baseline; font-size:11px; padding:2px 0; border-bottom:1px solid var(--border-light); }
+  .box-row:last-child { border-bottom:none; }
+  .box-k { color:var(--t2); }
+  .box-v { font-weight:700; }
+
+  /* ▸ TABLE */
+  .tbl { width:100%; border-collapse:collapse; font-size:10.5px; }
+  .tbl th { font-weight:600; color:var(--t3); text-align:left; padding:2px 0 4px; border-bottom:1px solid var(--border); font-size:9.5px; letter-spacing:.04em; }
+  .tbl td { padding:5px 0; border-bottom:1px solid var(--border-light); }
+  .tbl tr:last-child td { border-bottom:none; }
+  .tbl .hl { font-weight:700; }
+
+  /* ▸ CHART */
+  .ch-h { font-size:9.5px; font-weight:600; color:var(--t3); letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px; }
+  .ch-b { flex:1; min-height:0; }
+  .ch-b svg { width:100%; height:100%; }
+
+  /* ▸ DIVIDER */
+  .hr { border:none; border-top:1px solid var(--border); margin:0; }
+
+  /* ── FOOTER (compact) ── */
+  .ft { display:flex; align-items:center; justify-content:space-between; padding:6px 28px 10px; flex-shrink:0; }
+  .ft-src { font-size:9px; color:var(--t3); }
+  .ft-wm { font-size:9px; color:#ccc; }
+
+  /* Colors */
+  .cr{color:var(--red)} .cg{color:var(--green)} .cb{color:#2563eb} .cp{color:var(--purple)} .ca{color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div class="hd">
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <span class="hd-tag hd-tag-b">TAG</span>
+      <span class="hd-sub">SUBTITLE</span>
+    </div>
+    <span class="hd-date">DATE</span>
+  </div>
+
+  <!-- ══════ BODY: mix .r3 / .r21 / .r12 / .box / .tbl / .m as needed ══════ -->
+  <div class="bd">
+    <!-- EXAMPLE: 3-column metrics row -->
+    <div class="r3">
+      <div class="m"><div class="m-l">METRIC A</div><div class="m-v cb">$VALUE<span class="m-ch up">+XX%</span></div><div class="m-s">context line one<br>context line two</div></div>
+      <div class="m"><div class="m-l">METRIC B</div><div class="m-v">$VALUE</div><div class="m-s">context</div></div>
+      <div class="m"><div class="m-l">METRIC C</div><div class="m-v">$VALUE</div><div class="m-s">context</div></div>
+    </div>
+    <div class="hr"></div>
+    <!-- EXAMPLE: 2/3 + 1/3 split with table + chart -->
+    <div class="r21">
+      <div class="box">
+        <div class="box-h">BREAKDOWN</div>
+        <!-- rows here -->
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div class="ch-h">CHART TITLE</div>
+        <div class="ch-b"><!-- SVG --></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ft">
+    <span class="ft-src">SOURCES</span>
+    <span class="ft-wm">@IBO0OK</span>
+  </div>
+
+</div>
+</body>
+</html>
