@@ -23,6 +23,28 @@
   偏交易认知、趋势交易、资金管理与风控纪律的公开 skill。
   说明页：[skills/jiaoyiyuan-tony/README.md](./skills/jiaoyiyuan-tony/README.md)
   安装文件：[skills/jiaoyiyuan-tony/SKILL.md](./skills/jiaoyiyuan-tony/SKILL.md)
+- `SSHtool`
+  SSH 全生命周期运维操作技能，覆盖连接、部署、监控、备份、安全加固。
+  说明页：[skills/SSHtool/README.md](./skills/SSHtool/README.md)
+  安装文件：[skills/SSHtool/SKILL.md](./skills/SSHtool/SKILL.md)
+- `xiaohongshu-finance`
+  小红书财经投资类内容生成技能，内置违禁词规避系统、爆款标题公式、封面图提示词模板。
+  说明页：[skills/xiaohongshu-finance/README.md](./skills/xiaohongshu-finance/README.md)
+  安装文件：[skills/xiaohongshu-finance/SKILL.md](./skills/xiaohongshu-finance/SKILL.md)
+- `ssh-skill`
+  高性能 SSH 操作技能，支持守护进程长连接、自动连接复用、跳板机、批量并发、服务器间直接传输、自动错误恢复。
+  说明页：[skills/ssh-skill/README.md](./skills/ssh-skill/README.md)
+  安装文件：[skills/ssh-skill/SKILL.md](./skills/ssh-skill/SKILL.md)
+- `ioc-edit`
+  STM32CubeMX .ioc 文件编辑技能，支持添加/删除引脚、配置外设、修改时钟树、使能/禁用中断等。
+  安装文件：[skills/ioc-edit/SKILL.md](./skills/ioc-edit/SKILL.md)
+- `image-well`
+  从12个API并行搜索下载图片的技能（Openverse、Pexels、Pixabay、Met Museum、NASA等），支持许可证过滤、预设、批量下载。
+  说明页：[skills/image-well/README.md](./skills/image-well/README.md)
+  安装文件：[skills/image-well/SKILL.md](./skills/image-well/SKILL.md)
+- `chart-visualization`
+  数据可视化技能，智能选择26种图表类型，提取参数并生成图表图片。
+  安装文件：[skills/chart-visualization/SKILL.md](./skills/chart-visualization/SKILL.md)
 
 ## 适合什么任务
 
@@ -106,6 +128,16 @@ https://github.com/Ibook000/ibook-skill/raw/main/SKILL.md
 - [SKILL.md](./SKILL.md): 给人看也给模型直接使用的完整 skill
 - [skills/jiaoyiyuan-tony/README.md](./skills/jiaoyiyuan-tony/README.md): Tony 交易员 skill 的公开说明
 - [skills/jiaoyiyuan-tony/SKILL.md](./skills/jiaoyiyuan-tony/SKILL.md): Tony 交易员 skill 的完整版本
+- [skills/SSHtool/README.md](./skills/SSHtool/README.md): SSH 运维操作 skill 的公开说明
+- [skills/SSHtool/SKILL.md](./skills/SSHtool/SKILL.md): SSH 运维操作 skill 的完整版本
+- [skills/xiaohongshu-finance/README.md](./skills/xiaohongshu-finance/README.md): 小红书财经内容生成 skill 的公开说明
+- [skills/xiaohongshu-finance/SKILL.md](./skills/xiaohongshu-finance/SKILL.md): 小红书财经内容生成 skill 的完整版本
+- [skills/ssh-skill/README.md](./skills/ssh-skill/README.md): SSH 高性能操作 skill 的公开说明
+- [skills/ssh-skill/SKILL.md](./skills/ssh-skill/SKILL.md): SSH 高性能操作 skill 的完整版本
+- [skills/ioc-edit/SKILL.md](./skills/ioc-edit/SKILL.md): STM32CubeMX .ioc 编辑 skill
+- [skills/image-well/README.md](./skills/image-well/README.md): 图片搜索下载 skill 的公开说明
+- [skills/image-well/SKILL.md](./skills/image-well/SKILL.md): 图片搜索下载 skill 的完整版本
+- [skills/chart-visualization/SKILL.md](./skills/chart-visualization/SKILL.md): 图表可视化 skill
 
 ## 一句话概括
 
