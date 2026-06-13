@@ -1,1 +1,5 @@
 .serena/
+.claude/
+output/
+__pycache__/
+*.pyc
