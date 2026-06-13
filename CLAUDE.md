@@ -12,7 +12,12 @@ A **skill registry** — a collection of independent, self-contained AI agent sk
 |-------|----------|--------|
 | `ibook-builder` | `SKILL.md` (root) | Engineering builder persona — system-building, closed-loop delivery |
 | `jiaoyiyuan-tony` | `skills/jiaoyiyuan-tony/SKILL.md` | Trading discipline, risk control, position sizing |
-| `SSHtool` | `skills/SSHtool/SKILL.md` | SSH lifecycle operations (connection, deployment, monitoring, security) |
+| `tweet-card-generator` | `skills/tweet-card-generator/SKILL.md` | Twitter data card generation with 12 chart types |
+| `ssh-skill` | `skills/ssh-skill/SKILL.md` | High-performance SSH operations with persistent connections and batch concurrency |
+| `ioc-edit` | `skills/ioc-edit/SKILL.md` | STM32CubeMX .ioc file editing (pins, peripherals, clocks, interrupts) |
+| `image-well` | `skills/image-well/SKILL.md` | Parallel image search across 12 APIs (4 no-key sources) |
+| `chart-visualization` | `skills/chart-visualization/SKILL.md` | Data visualization with 26 chart types |
+| `notion-skill` | `skills/notion-skill/SKILL.md` | Notion workspace operations |
 | `xiaohongshu-finance` | `skills/xiaohongshu-finance/SKILL.md` | Xiaohongshu financial content generation with banned-word avoidance |
 
 ## Skill Anatomy (Convention for Adding/Editing Skills)
@@ -27,9 +32,13 @@ Every skill follows this structure:
 
 When adding a new skill, place it under `skills/<skill-name>/` with at minimum a `SKILL.md` and `README.md`. Update the root `README.md` skill directory listing.
 
-## Only Executable Code: xiaohongshu-finance
+## Executable Code
 
-`skills/xiaohongshu-finance/driver.py` is the only script with runtime dependencies. It renders HTML/SVG templates into PNG images via Playwright.
+Several skills contain Python scripts with runtime dependencies:
+
+### xiaohongshu-finance
+
+`skills/xiaohongshu-finance/driver.py` renders HTML/SVG templates into PNG images via Playwright.
 
 ```bash
 # Setup
@@ -47,6 +56,37 @@ python driver.py generate examples/post_chart.json --output-dir output/
 
 The sub-skill has its own CLAUDE.md at `skills/xiaohongshu-finance/CLAUDE.md` with detailed architecture docs. HTML templates use `{{VARIABLE}}` placeholders. The unified theme is blue-gray (`#111844` / `#4B5694` / `#7288AE` / `#EAE0CF`).
 
+### ssh-skill
+
+`skills/ssh-skill/scripts/` contains 16+ Python scripts for SSH operations:
+
+- `ssh_daemon.py` — Persistent SSH connection daemon
+- `ssh_execute.py` — Remote command execution
+- `ssh_upload.py` / `ssh_download.py` — File transfer
+- `ssh_tunnel.py` — Port forwarding and tunnels
+- `ssh_cluster.py` — Batch server operations
+- `ssh_config_manager_v3.py` — SSH config management
+- `ssh_key_manager.py` — SSH key operations
+
+### image-well
+
+`skills/image-well/scripts/well.py` searches 12 image APIs in parallel:
+
+```bash
+# Search across all no-key sources
+uv run ~/.claude/skills/image-well/scripts/well.py search "ancient Minoan fresco"
+
+# Search with preset
+uv run well.py search "military vehicle" --preset military
+
+# Download with metadata
+uv run well.py download "NASA mars" --limit 10 --save-metadata
+```
+
+### ioc-edit
+
+`skills/ioc-edit/scripts/ioc_editor.py` edits STM32CubeMX .ioc configuration files programmatically.
+
 ## Critical Constraints (xiaohongshu-finance)
 
 These are hard rules from the skill's safety principles, enforced on every output:
@@ -62,5 +102,5 @@ These are hard rules from the skill's safety principles, enforced on every outpu
 - Primary language is **Chinese** (README.md, SKILL.md files, references are all in Chinese).
 - No build system, no tests, no CI/CD, no linting config at the repo level.
 - No `package.json`, `Makefile`, `pyproject.toml`, or `Dockerfile`.
-- The `.serena/` directory is LSP tooling config (language: bash) — not part of the skill content.
+- `.serena/` is in `.gitignore` — local LSP tooling config, not tracked.
 - `output/` contains generated sample images from driver.py — not source material.
