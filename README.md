@@ -193,6 +193,20 @@ ssh 连到 192.168.1.100
 
 ---
 
+
+### 🦾 msp0-skill
+给 AI Agent 的 **TI MSPM0 / 天猛星 G3507** 固件开发套件。专为底层硬件开发、全国大学生电子设计竞赛（NUEDC）等场景打磨的 SysConfig 代码生成规则集。
+
+- ⚡️ **SysConfig 操控**：严格限定 AI 只修改 `.syscfg` 源码，杜绝手改生成代码造成的覆盖灾难。
+- 🎯 **天猛星管脚避坑**：内置立创·天猛星 G3507 引脚占用表，自动规避 PA18 BSL、PA5/PA6 晶振等特殊引脚。
+- 🛠 **开箱即用示例**：内含 `led_blink`, `uart_blocking_tx`, 甚至包含带有 OLED 驱动、六轴陀螺仪和全套小游戏逻辑的完整 `oledui_full_g3519` 工程参考。
+- 🔍 **开发辅助脚本**：自带 Python 脚本（`check_syscfg.py`, `ccs_dss_debug.py`），能让 AI 帮你做静态管脚排错，甚至通过命令行读取探针状态。
+
+```bash
+# Agent 工作示例
+"帮我配一下天猛星板载的 PB22 呼吸灯（PWM），顺便把 PA10/PA11 串口打通跑个 Hello World"
+```
+
 ## 仓库结构
 
 ```
