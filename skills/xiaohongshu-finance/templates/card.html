@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<style>
+  {{FONT_FACE}}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: {{FONT_FAMILY}};
+    width: 1080px;
+    min-height: 1440px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* === 深色主题（默认）=== */
+  .dark {
+    background: linear-gradient(160deg, #111844 0%, #1a1f36 40%, #1f2847 100%);
+    color: #e8e8e8;
+  }
+  .dark .card {
+    background: rgba(75,86,148,0.15);
+    border: 1px solid rgba(75,86,148,0.3);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .dark .title { color: #EAE0CF; }
+  .dark .subtitle { color: rgba(234,224,207,0.5); }
+  .dark .point-num { background: linear-gradient(135deg, #7288AE, #4B5694); color: #111844; }
+  .dark .point-text { color: rgba(234,224,207,0.85); }
+  .dark .divider { background: linear-gradient(90deg, transparent, #7288AE, transparent); }
+  .dark .footer { color: rgba(234,224,207,0.4); border-top: 1px solid rgba(234,224,207,0.08); }
+  .dark .accent-line { background: linear-gradient(90deg, #7288AE, transparent); }
+  .dark .glow { background: radial-gradient(circle, rgba(75,86,148,0.12) 0%, transparent 70%); }
+  .dark .deco-grid { background-image: linear-gradient(rgba(114,136,174,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(114,136,174,0.1) 1px, transparent 1px); }
+
+/* === 通用布局 === */
+  .container {
+    width: 100%;
+    min-height: 1440px;
+    padding: 80px 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glow {
+    position: absolute;
+    top: -200px;
+    right: -200px;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .glow-bottom {
+    position: absolute;
+    bottom: -300px;
+    left: -200px;
+    width: 700px;
+    height: 700px;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .card {
+    position: relative;
+    z-index: 1;
+    border-radius: 24px;
+    padding: 70px 60px;
+  }
+
+  .icon {
+    font-size: 72px;
+    margin-bottom: 30px;
+    display: block;
+  }
+
+  .accent-line {
+    width: 80px;
+    height: 4px;
+    border-radius: 2px;
+    margin-bottom: 30px;
+  }
+
+  .title {
+    font-size: 56px;
+    font-weight: 900;
+    line-height: 1.35;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+  }
+
+  .subtitle {
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.6;
+    margin-bottom: 50px;
+  }
+
+  .divider {
+    width: 100%;
+    height: 1px;
+    margin: 40px 0;
+  }
+
+  .points {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    margin-top: 10px;
+  }
+
+  .point {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .point-num {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  .point-text {
+    font-size: 30px;
+    font-weight: 500;
+    line-height: 1.6;
+  }
+
+  .footer {
+    margin-top: 50px;
+    padding-top: 30px;
+    font-size: 22px;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  /* === 装饰元素：专业网格 === */
+  .deco-grid {
+    position: absolute;
+    inset: 0;
+    background-size: 80px 80px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* === 水印 === */
+  .watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 180px;
+    font-weight: 900;
+    letter-spacing: 20px;
+    color: rgba(234,224,207,0.03);
+    pointer-events: none;
+    z-index: 0;
+    white-space: nowrap;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<div class="container {{STYLE_CLASS}}">
+  <div class="glow"></div>
+  <div class="glow glow-bottom"></div>
+  <div class="deco-grid"></div>
+  <div class="watermark">IBOOK</div>
+
+  <div class="card">
+    <span class="icon">{{ICON}}</span>
+    <div class="accent-line"></div>
+    <h1 class="title">{{TITLE}}</h1>
+    <p class="subtitle">{{SUBTITLE}}</p>
+    {{POINTS_HTML}}
+    <div class="footer"> {{FOOTER}}</div>
+  </div>
+</div>
+</body>
+</html>

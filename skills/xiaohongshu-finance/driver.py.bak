@@ -1,0 +1,1677 @@
+#!/usr/bin/env python3
+"""
+小红书财经封面图生成器 v2
+手写 HTML+CSS 深色卡片 → Playwright 截图 → PNG
+
+新增功能：
+  --font <字体>     可选字体: default / modern / classic / simple
+  --count <数量>    生成多张变体（不同模板/布局）
+  --output-dir      自定义输出目录（默认 output/YYYY-MM-DD/）
+  --strip-emoji     自动移除 emoji（默认开启）
+
+用法:
+  python driver.py --title "标题" --points "要点1" "要点2"
+  python driver.py --title "标题" --font classic --count 3
+  python driver.py --config post.json --output-dir /custom/path
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import re
+import sys
+import unicodedata
+from datetime import datetime
+from pathlib import Path
+
+# 模板目录
+TEMPLATE_DIR = Path(__file__).parent / "templates"
+SKILL_DIR = Path(__file__).parent
+
+# 字体文件路径（skill 自带的 fonts/ 目录）
+_FONT_DIR = SKILL_DIR / "fonts"
+
+
+def _load_font_files():
+    """扫描 fonts/ 目录，返回 {字体名: 字体文件名} 的映射（不带路径）
+    
+    如果 fontTools 未安装，返回空字典，自动回退到系统字体。
+    """
+    # 尝试导入 fontTools，失败则跳过
+    try:
+        from fontTools.ttLib import TTFont, TTCollection
+    except ImportError:
+        print("  [WARN] fontTools 未安装，字体文件加载被跳过，将使用系统字体")
+        return {}
+
+    font_files = {}
+    if _FONT_DIR.exists():
+        for f in _FONT_DIR.iterdir():
+            if f.suffix == ".ttc":
+                try:
+                    coll = TTCollection(str(f))
+                    for font in coll.fonts:
+                        for record in font['name'].names:
+                            if record.nameID == 1:  # Font Family Name
+                                family = record.toUnicode()
+                                if "SC" in family or "CN" in family:
+                                    font_files[family] = f.name
+                                break
+                except Exception as e:
+                    print(f"  [WARN] 无法读取字体文件 {f.name}: {e}")
+            elif f.suffix in (".ttf", ".otf", ".woff", ".woff2"):
+                try:
+                    font = TTFont(str(f))
+                    for record in font['name'].names:
+                        if record.nameID == 1:  # Font Family Name
+                            family = record.toUnicode()
+                            font_files[family] = f.name
+                            break
+                except Exception as e:
+                    print(f"  [WARN] 无法读取字体文件 {f.name}: {e}")
+    return font_files
+
+
+_FONT_FILES = _load_font_files()
+
+
+# 默认输出目录：output/YYYY-MM-DD/
+DATE_DIR = datetime.now().strftime("%Y-%m-%d")
+DEFAULT_OUTPUT_DIR = SKILL_DIR.parent.parent / "output" / DATE_DIR
+
+
+# ========================
+# 字体预设
+# ========================
+
+def _detect_available_fonts():
+    """探测系统实际安装的中文字体，返回名称列表"""
+    fonts = set()
+    try:
+        import subprocess
+        proc = subprocess.run(
+            ["fc-list", ":lang=zh", "-f", "%{family}\n"],
+            capture_output=True, text=True, timeout=10,
+        )
+        for line in proc.stdout.splitlines():
+            line = line.strip()
+            if line:
+                # 取第一个字体名（逗号分隔）
+                name = line.split(",")[0].strip()
+                if name:
+                    fonts.add(name)
+    except Exception:
+        pass
+    return fonts
+
+
+_AVAILABLE_FONTS = _detect_available_fonts()
+
+# 字体预设定义
+# each: {"display": [], "fallback": [], "face_name": "local name for @font-face"}
+# 渲染时 fallback 链用 fc-list 检测结果裁剪，未安装的字体自动剔除
+_FONT_DEFS = {
+    "default": {
+        "display": ["Alibaba PuHuiTi 3.0"],
+        "fallback": ["Noto Sans CJK SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", "sans-serif"],
+        "face_name": "Alibaba PuHuiTi 3.0",
+    },
+    "modern": {
+        "display": ["PingFang SC"],
+        "fallback": ["Noto Sans CJK SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", "sans-serif"],
+        "face_name": "PingFang SC",
+    },
+    "classic": {
+        "display": ["Source Han Serif SC", "Noto Serif CJK SC"],
+        "fallback": ["WenQuanYi Zen Hei", "Microsoft YaHei", "Droid Sans Fallback", "serif"],
+        "face_name": "Noto Serif CJK SC",
+    },
+    "simple": {
+        "display": ["Noto Sans CJK SC"],
+        "fallback": ["Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", "sans-serif"],
+        "face_name": "Noto Sans CJK SC",
+    },
+    "bold": {
+        "display": ["Noto Serif CJK SC", "Source Han Serif SC"],
+        "fallback": ["WenQuanYi Zen Hei", "Microsoft YaHei", "Droid Sans Fallback", "serif"],
+        "face_name": "Noto Serif CJK SC",
+        "weight": "700",
+    },
+}
+
+
+def _resolve_family(name: str) -> str:
+    """构建真实的 fallback 字体链：已安装的字体保留，未安装的用本地 fallback。"""
+    parts = [f"'{name}'" for name in _FONT_DEFS[name]["display"]]
+    for fb in _FONT_DEFS[name]["fallback"]:
+        if fb in _AVAILABLE_FONTS or fb in {"serif", "sans-serif"}:
+            parts.append(f"'{fb}'")
+        elif fb.lower() in {f.lower() for f in _AVAILABLE_FONTS}:
+            # case-insensitive match
+            for actual in _AVAILABLE_FONTS:
+                if actual.lower() == fb.lower():
+                    parts.append(f"'{actual}'")
+                    break
+    return ", ".join(parts)
+
+
+def _build_face_css(name: str, font_files: dict | None = None) -> str:
+    """生成 @font-face：优先使用本地 fonts/ 目录中的字体文件，回退到系统字体。"""
+    display_name = _FONT_DEFS[name]["face_name"]
+
+    # 优先使用本地字体文件（skill 自带的 fonts/ 目录）
+    font_src = []
+    if font_files:
+        for fb in _FONT_DEFS[name]["display"] + _FONT_DEFS[name]["fallback"]:
+            if fb in font_files:
+                font_file = font_files[fb]
+                # 构造 file:// URL，路径基于 driver.py 所在位置
+                font_path = _FONT_DIR / font_file
+                font_src.append(f"url('file://{font_path}') format('truetype')")
+                break
+
+    # 如果没有找到匹配的字体文件，使用系统字体
+    if not font_src:
+        local_sources = []
+        for fb in _FONT_DEFS[name]["display"] + _FONT_DEFS[name]["fallback"]:
+            if fb in _AVAILABLE_FONTS:
+                local_sources.append(f"local('{fb}')")
+            elif fb.lower() in {f.lower() for f in _AVAILABLE_FONTS}:
+                for actual in _AVAILABLE_FONTS:
+                    if actual.lower() == fb.lower():
+                        local_sources.append(f"local('{actual}')")
+                        break
+        if not local_sources:
+            local_sources = ["local('WenQuanYi Micro Hei')", "local('Droid Sans Fallback')"]
+        font_src = local_sources
+
+    src = ", ".join(font_src)
+    return (
+        f"  @font-face {{\n"
+        f"    font-family: '{display_name}';\n"
+        f"    src: {src};\n"
+        f"    font-weight: 100 900;\n"
+        f"    font-display: swap;\n"
+        f"  }}"
+    )
+
+
+def get_font(font_name: str, font_files: dict | None = None):
+    """获取字体配置，返回 (family_chain, face_css)"""
+    preset_name = font_name if font_name in _FONT_DEFS else "default"
+    if font_files is None:
+        font_files = _FONT_FILES
+    return _resolve_family(preset_name), _build_face_css(preset_name, font_files)
+
+
+# 字体预设列表（给 argparse 用）
+FONT_PRESETS = list(_FONT_DEFS.keys())
+
+
+# ========================
+# Emoji 处理
+# ========================
+
+def strip_emoji(text: str) -> str:
+    """移除所有 emoji 和特殊符号，保留中文、英文、数字和常用标点"""
+    # 保留字符集：中文、英文、数字、常用标点、空格
+    # 移除 emoji（Unicode 范围）、彩色符号、特殊图形字符
+    result = []
+    for ch in text:
+        # 检查是否是 emoji（通过 Unicode 分类判断）
+        cat = unicodedata.category(ch)
+        # Co (Private Use), So (Symbol Other), Sm (Symbol Math), Sk (Symbol Modifier)
+        # 以及具体 emoji 范围
+        cp = ord(ch)
+        is_emoji = (
+            cat in ("Co", "So", "Sk") or
+            # Emoji 范围
+            (0x1F000 <= cp <= 0x1FFFF) or
+            (0x2600 <= cp <= 0x26FF) or
+            (0x2700 <= cp <= 0x27BF) or
+            (0xFE00 <= cp <= 0xFE0F) or
+            (0x1F600 <= cp <= 0x1F64F) or
+            (0x1F300 <= cp <= 0x1F5FF) or
+            (0x1F680 <= cp <= 0x1F6FF) or
+            (0x1F900 <= cp <= 0x1F9FF) or
+            # 变体选择器
+            (0xFE00 <= cp <= 0xFE0F) or
+            (0x20E0 <= cp <= 0x20EF) or
+            # 其他符号
+            (0x200D <= cp <= 0x200D) or  # ZWJ
+            (0x231A <= cp <= 0x231B) or
+            (0x23E9 <= cp <= 0x23F3) or
+            (0x23F8 <= cp <= 0x23FA) or
+            (0x25AA <= cp <= 0x25AB) or
+            (0x25B6 <= cp <= 0x25B6) or
+            (0x25C0 <= cp <= 0x25C0) or
+            (0x25FB <= cp <= 0x25FE)
+        )
+        if is_emoji:
+            continue
+        result.append(ch)
+    return "".join(result)
+
+
+# ========================
+# 模板和渲染
+# ========================
+
+def load_base_css() -> str:
+    """加载共享基础样式"""
+    css_path = TEMPLATE_DIR / "base.css"
+    return css_path.read_text(encoding="utf-8") if css_path.exists() else ""
+
+
+def load_template(name: str = "card.html") -> str:
+    """加载 HTML 模板，自动注入基础样式"""
+    template_path = TEMPLATE_DIR / name
+    if not template_path.exists():
+        print(f"[ERROR] 模板不存在: {template_path}")
+        sys.exit(1)
+    html = template_path.read_text(encoding="utf-8")
+    # 注入共享 CSS
+    if "{{BASE_CSS}}" in html:
+        html = html.replace("{{BASE_CSS}}", load_base_css())
+    return html
+
+
+def _replace_html(html: str, title: str, subtitle: str = "", footer: str = "",
+                  extra: dict | None = None, font_name: str = "default",
+                  strip_emoji_flag: bool = True, font_files: dict | None = None) -> str:
+    """通用 HTML 变量替换"""
+    font_family, font_face_css = get_font(font_name, font_files)
+
+    # 处理文本中的 emoji
+    if strip_emoji_flag:
+        title = strip_emoji(title)
+        subtitle = strip_emoji(subtitle)
+        footer = strip_emoji(footer)
+        if extra:
+            extra = {k: strip_emoji(v) if isinstance(v, str) else v for k, v in extra.items()}
+
+    replacements = {
+        "{{TITLE}}": title,
+        "{{SUBTITLE}}": subtitle,
+        "{{FOOTER}}": footer,
+        "{{STYLE_CLASS}}": "dark",
+        "{{FONT_FACE}}": font_face_css,
+        "{{FONT_FAMILY}}": font_family,
+    }
+    if extra:
+        replacements.update(extra)
+
+    for key, val in replacements.items():
+        html = html.replace(key, val)
+    return html
+
+
+def render_card(
+    title: str,
+    subtitle: str = "",
+    points: list[str] | None = None,
+    footer: str = "",
+    font_name: str = "default",
+    strip_emoji_flag: bool = True,
+    font_files: dict | None = None,
+) -> str:
+    """渲染卡片 HTML"""
+    html = load_template("card.html")
+
+    if not points:
+        points = []
+    if not footer:
+        footer = "以上仅为个人分析，不构成投资建议"
+
+    # 构建要点 HTML
+    points_html = ""
+    if points:
+        points_html = '<div class="points">\n'
+        for i, p in enumerate(points, 1):
+            safe_p = strip_emoji(p) if strip_emoji_flag else p
+            points_html += f'  <div class="point"><span class="point-num">{i}</span><span class="point-text">{safe_p}</span></div>\n'
+        points_html += "</div>"
+
+    # 移除 ICON（emoji 不显示）
+    html = html.replace("{{ICON}}", "")
+
+    return _replace_html(
+        html, title, subtitle, footer,
+        extra={"{{POINTS_HTML}}": points_html},
+        font_name=font_name,
+        strip_emoji_flag=strip_emoji_flag,
+        font_files=font_files,
+    )
+
+
+def render_minimal(
+    title: str,
+    subtitle: str = "",
+    font_name: str = "default",
+    strip_emoji_flag: bool = True,
+    font_files: dict | None = None,
+) -> str:
+    """渲染极简文字卡片"""
+    html = load_template("minimal.html")
+    return _replace_html(
+        html, title, subtitle, font_name=font_name, strip_emoji_flag=strip_emoji_flag,
+        font_files=font_files,
+    )
+
+
+def render_data_card(
+    title: str,
+    data_items: list[dict] | None = None,
+    footer: str = "",
+    font_name: str = "default",
+    strip_emoji_flag: bool = True,
+    font_files: dict | None = None,
+) -> str:
+    """渲染数据可视化卡片"""
+    html = load_template("data.html")
+
+    if not data_items:
+        data_items = []
+    if not footer:
+        footer = "数据来源：公开市场数据"
+
+    data_html = ""
+    if data_items:
+        data_html = '<div class="data-grid">\n'
+        for item in data_items:
+            label = item.get("label", "")
+            value = item.get("value", "")
+            trend = item.get("trend", "")
+            # 趋势符号用文字替代（不用 emoji）
+            trend_text = {"up": "↑", "down": "↓", "flat": "→"}.get(trend, "")
+            data_html += f'''  <div class="data-item">
+    <div class="data-value">{value} {trend_text}</div>
+    <div class="data-label">{label}</div>
+  </div>\n'''
+        data_html += "</div>"
+
+    return _replace_html(
+        html, title, footer=footer,
+        extra={"{{DATA_HTML}}": data_html},
+        font_name=font_name,
+        strip_emoji_flag=strip_emoji_flag,
+        font_files=font_files,
+    )
+
+
+def render_table_card(
+    title: str,
+    headers: list[str] | None = None,
+    rows: list[list[str]] | None = None,
+    subtitle: str = "",
+    footer: str = "",
+    font_name: str = "default",
+    strip_emoji_flag: bool = True,
+    font_files: dict | None = None,
+) -> str:
+    """渲染专业数据表格"""
+    html = load_template("table.html")
+
+    if not headers:
+        headers = []
+    if not rows:
+        rows = []
+    if not footer:
+        footer = "数据来源：公开市场数据"
+
+    table_html = '<table class="data-table">\n'
+
+    if headers:
+        table_html += '  <thead><tr class="table-header">\n'
+        for h in headers:
+            safe_h = strip_emoji(h) if strip_emoji_flag else h
+            table_html += f'    <th>{safe_h}</th>\n'
+        table_html += '  </tr></thead>\n'
+
+    if rows:
+        table_html += '  <tbody>\n'
+        for row in rows:
+            table_html += '    <tr class="table-row">\n'
+            for cell in row:
+                cell_class = "table-cell"
+                if cell.startswith("+"):
+                    cell_class = "table-cell cell-highlight"
+                elif cell.startswith("-"):
+                    cell_class = "table-cell cell-warning"
+                safe_cell = strip_emoji(cell) if strip_emoji_flag else cell
+                table_html += f'      <td class="{cell_class}">{safe_cell}</td>\n'
+            table_html += '    </tr>\n'
+        table_html += '  </tbody>\n'
+
+    table_html += '</table>'
+
+    return _replace_html(
+        html, title, subtitle, footer,
+        extra={"{{TABLE_HTML}}": table_html},
+        font_name=font_name,
+        strip_emoji_flag=strip_emoji_flag,
+        font_files=font_files,
+    )
+
+
+def render_comparison_card(
+    title: str,
+    left_name: str = "",
+    right_name: str = "",
+    items: list[dict] | None = None,
+    subtitle: str = "",
+    footer: str = "",
+    font_name: str = "default",
+    strip_emoji_flag: bool = True,
+    font_files: dict | None = None,
+) -> str:
+    """渲染对比分析卡片"""
+    html = load_template("comparison.html")
+
+    if not items:
+        items = []
+    if not footer:
+        footer = "以上仅为个人分析，不构成投资建议"
+
+    compare_html = '<div class="compare-grid">\n'
+
+    # 左列
+    compare_html += f'  <div class="compare-col left">\n'
+    compare_html += f'    <div class="col-title">{left_name}</div>\n'
+    for item in items:
+        label = item.get("label", "")
+        left_val = item.get("left", "")
+        left_class = "item-value"
+        if item.get("left_good"):
+            left_class += " good"
+        elif item.get("left_bad"):
+            left_class += " bad"
+        safe_label = strip_emoji(label) if strip_emoji_flag else label
+        safe_val = strip_emoji(left_val) if strip_emoji_flag else left_val
+        compare_html += f'    <div class="compare-item"><div class="item-label">{safe_label}</div><div class="{left_class}">{safe_val}</div></div>\n'
+    compare_html += '  </div>\n'
+
+    # 右列
+    compare_html += f'  <div class="compare-col right">\n'
+    compare_html += f'    <div class="col-title">{right_name}</div>\n'
+    for item in items:
+        label = item.get("label", "")
+        right_val = item.get("right", "")
+        right_class = "item-value"
+        if item.get("right_good"):
+            right_class += " good"
+        elif item.get("right_bad"):
+            right_class += " bad"
+        safe_label = strip_emoji(label) if strip_emoji_flag else label
+        safe_val = strip_emoji(right_val) if strip_emoji_flag else right_val
+        compare_html += f'    <div class="compare-item"><div class="item-label">{safe_label}</div><div class="{right_class}">{safe_val}</div></div>\n'
+    compare_html += '  </div>\n'
+
+    compare_html += '</div>'
+
+    return _replace_html(
+        html, title, subtitle, footer,
+        extra={"{{COMPARE_HTML}}": compare_html},
+        font_name=font_name,
+        strip_emoji_flag=strip_emoji_flag,
+        font_files=font_files,
+    )
+
+
+def render_kpi_card(
+    title: str,
+    kpis: list[dict] | None = None,
+    subtitle: str = "",
+    footer: str = "",
+    font_name: str = "default",
+    strip_emoji_flag: bool = True,
+    font_files: dict | None = None,
+) -> str:
+    """渲染 KPI 仪表盘卡片"""
+    html = load_template("kpi.html")
+
+    if not kpis:
+        kpis = []
+    if not footer:
+        footer = "数据来源：公开市场数据"
+
+    kpi_html = '<div class="kpi-grid">\n'
+    for kpi in kpis:
+        # 不使用 emoji 图标，用 CSS 替代
+        label = kpi.get("label", "")
+        value = kpi.get("value", "")
+        change = kpi.get("change", "")
+        progress = kpi.get("progress", 0)
+
+        change_class = "kpi-change"
+        if change.startswith("+"):
+            change_class += " up"
+        elif change.startswith("-"):
+            change_class += " down"
+
+        safe_label = strip_emoji(label) if strip_emoji_flag else label
+        safe_value = strip_emoji(value) if strip_emoji_flag else value
+        safe_change = strip_emoji(change) if strip_emoji_flag else change
+
+        kpi_html += f'''  <div class="kpi-card">
+    <div class="kpi-header">
+      <div class="kpi-label">{safe_label}</div>
+    </div>
+    <div class="kpi-value">{safe_value}</div>
+    <div class="{change_class}">{safe_change}</div>
+    <div class="progress-container">
+      <div class="progress-bg"><div class="progress-bar" style="width: {progress}%"></div></div>
+    </div>
+  </div>\n'''
+    kpi_html += '</div>'
+
+    return _replace_html(
+        html, title, subtitle, footer,
+        extra={"{{KPI_HTML}}": kpi_html},
+        font_name=font_name,
+        strip_emoji_flag=strip_emoji_flag,
+        font_files=font_files,
+    )
+
+
+def render_ranking_card(
+    title: str,
+    items: list[dict] | None = None,
+    subtitle: str = "",
+    footer: str = "",
+    font_name: str = "default",
+    strip_emoji_flag: bool = True,
+    font_files: dict | None = None,
+) -> str:
+    """渲染排行榜卡片"""
+    html = load_template("ranking.html")
+
+    if not items:
+        items = []
+    if not footer:
+        footer = "数据来源：公开市场数据"
+
+    # 计算最大值用于进度条
+    max_val = 0
+    for item in items:
+        try:
+            val = float(item.get("value", "0").replace(",", "").replace("%", "").replace("亿", "").replace("万", ""))
+            max_val = max(max_val, abs(val))
+        except:
+            pass
+
+    ranking_html = '<div class="ranking-list">\n'
+    for i, item in enumerate(items):
+        name = item.get("name", "")
+        desc = item.get("desc", "")
+        value = item.get("value", "")
+        is_top = i < 3
+
+        try:
+            val = float(value.replace(",", "").replace("%", "").replace("亿", "").replace("万", ""))
+            bar_width = int((abs(val) / max_val * 100)) if max_val > 0 else 50
+        except:
+            bar_width = 50
+
+        top_class = " top" if is_top else ""
+        safe_name = strip_emoji(name) if strip_emoji_flag else name
+        safe_desc = strip_emoji(desc) if strip_emoji_flag else desc
+        safe_value = strip_emoji(value) if strip_emoji_flag else value
+
+        ranking_html += f'''  <div class="rank-item{top_class}">
+    <div class="rank-num">{i + 1}</div>
+    <div class="rank-content">
+      <div class="rank-name">{safe_name}</div>
+      <div class="rank-desc">{safe_desc}</div>
+    </div>
+    <div class="rank-right">
+      <div class="rank-value">{safe_value}</div>
+      <div class="rank-bar-container">
+        <div class="rank-bar-bg"><div class="rank-bar" style="width: {bar_width}%"></div></div>
+      </div>
+    </div>
+  </div>\n'''
+    ranking_html += '</div>'
+
+    return _replace_html(
+        html, title, subtitle, footer,
+        extra={"{{RANKING_HTML}}": ranking_html},
+        font_name=font_name,
+        strip_emoji_flag=strip_emoji_flag,
+        font_files=font_files,
+    )
+
+
+# ========================
+# SVG 图表
+# ========================
+
+THEME_COLORS = {
+    "dark": {
+        "bg": "#111844", "card_bg": "rgba(75,86,148,0.15)",
+        "text": "#EAE0CF", "text_secondary": "rgba(234,224,207,0.5)",
+        "grid": "rgba(114,136,174,0.12)", "axis": "rgba(234,224,207,0.15)",
+        "colors": ["#7288AE", "#4ade80", "#EAE0CF", "#f87171", "#a78bfa", "#34d399", "#fbbf24", "#f472b6"],
+    },
+}
+
+
+def _nice_scale(v_min: float, v_max: float, ticks: int = 5):
+    """计算美观的刻度范围"""
+    if v_max == v_min:
+        v_max = v_min + 1
+    raw = (v_max - v_min) / ticks
+    mag = 10 ** int(math.log10(raw)) if raw > 0 else 1
+    norm = raw / mag
+    if norm <= 1:
+        step = 1 * mag
+    elif norm <= 2:
+        step = 2 * mag
+    elif norm <= 5:
+        step = 5 * mag
+    else:
+        step = 10 * mag
+    lo = math.floor(v_min / step) * step
+    hi = math.ceil(v_max / step) * step
+    return lo, hi, step
+
+
+def render_svg_line_chart(labels, datasets, font_name: str = "default", strip_emoji_flag: bool = True):
+    """折线图 SVG"""
+    t = THEME_COLORS["dark"]
+    W, H = 960, 600
+    ml, mr, mt, mb = 90, 30, 30, 80  # 加大左间距，给Y轴标签留空间
+    cw, ch = W - ml - mr, H - mt - mb
+
+    all_vals = [v for ds in datasets for v in ds["values"]]
+    v_min, v_max = min(all_vals), max(all_vals)
+    lo, hi, step = _nice_scale(v_min, v_max)
+    n = len(labels)
+    x_step = cw / max(n - 1, 1)
+
+    font_family, _ = get_font(font_name)
+
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" font-family="{font_family}">\n'
+
+    # 网格线 + Y 轴刻度（加大字体、加粗）
+    y = lo
+    while y <= hi + step * 0.01:
+        py = mt + ch - (y - lo) / (hi - lo) * ch
+        svg += f'<line x1="{ml}" y1="{py:.1f}" x2="{W - mr}" y2="{py:.1f}" stroke="{t["grid"]}" stroke-width="1"/>\n'
+        svg += f'<text x="{ml - 14}" y="{py + 6:.1f}" text-anchor="end" fill="{t["text"]}" font-size="16" font-weight="600">{y:,.1f}</text>\n'
+        y += step
+
+    # X 轴标签
+    for i, label in enumerate(labels):
+        safe_label = strip_emoji(label) if strip_emoji_flag else label
+        x = ml + i * x_step
+        svg += f'<text x="{x:.1f}" y="{H - mb + 30}" text-anchor="middle" fill="{t["text_secondary"]}" font-size="13">{safe_label}</text>\n'
+
+    # 数据线
+    for di, ds in enumerate(datasets):
+        color = ds.get("color", t["colors"][di % len(t["colors"])])
+        vals = ds["values"]
+        pts = []
+        for i, v in enumerate(vals):
+            x = ml + i * x_step
+            y = mt + ch - (v - lo) / (hi - lo) * ch
+            pts.append(f"{x:.1f},{y:.1f}")
+        svg += f'<polyline points="{" ".join(pts)}" fill="none" stroke="{color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>\n'
+        for i, v in enumerate(vals):
+            x = ml + i * x_step
+            y = mt + ch - (v - lo) / (hi - lo) * ch
+            svg += f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="{color}" stroke="{t["bg"]}" stroke-width="2"/>\n'
+
+    # 坐标轴线
+    svg += f'<line x1="{ml}" y1="{mt}" x2="{ml}" y2="{mt + ch}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+    svg += f'<line x1="{ml}" y1="{mt + ch}" x2="{W - mr}" y2="{mt + ch}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+
+    # 图例
+    lx = ml
+    ly = H - 20
+    for di, ds in enumerate(datasets):
+        color = ds.get("color", t["colors"][di % len(t["colors"])])
+        safe_label = strip_emoji(ds["label"]) if strip_emoji_flag else ds["label"]
+        svg += f'<circle cx="{lx}" cy="{ly}" r="5" fill="{color}"/>\n'
+        svg += f'<text x="{lx + 10}" y="{ly + 5}" fill="{t["text"]}" font-size="14">{safe_label}</text>\n'
+        lx += len(safe_label) * 14 + 30
+
+    svg += '</svg>'
+    return svg
+
+
+def render_svg_area_chart(labels, datasets, font_name: str = "default", strip_emoji_flag: bool = True):
+    """面积图 SVG"""
+    t = THEME_COLORS["dark"]
+    W, H = 960, 600
+    ml, mr, mt, mb = 90, 30, 30, 80  # 加大左间距
+    cw, ch = W - ml - mr, H - mt - mb
+
+    all_vals = [v for ds in datasets for v in ds["values"]]
+    v_min, v_max = min(all_vals), max(all_vals)
+    lo, hi, step = _nice_scale(v_min, v_max)
+    n = len(labels)
+    x_step = cw / max(n - 1, 1)
+
+    font_family, _ = get_font(font_name)
+
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" font-family="{font_family}">\n'
+
+    # 渐变定义
+    for di, ds in enumerate(datasets):
+        color = ds.get("color", t["colors"][di % len(t["colors"])])
+        svg += f'<defs><linearGradient id="ag{di}" x1="0" y1="0" x2="0" y2="1">\n'
+        svg += f'  <stop offset="0%" stop-color="{color}" stop-opacity="0.3"/>\n'
+        svg += f'  <stop offset="100%" stop-color="{color}" stop-opacity="0.02"/>\n'
+        svg += f'</linearGradient></defs>\n'
+
+    # 网格线 + Y 轴刻度（加大字体、加粗）
+    y = lo
+    while y <= hi + step * 0.01:
+        py = mt + ch - (y - lo) / (hi - lo) * ch
+        svg += f'<line x1="{ml}" y1="{py:.1f}" x2="{W - mr}" y2="{py:.1f}" stroke="{t["grid"]}" stroke-width="1"/>\n'
+        svg += f'<text x="{ml - 14}" y="{py + 6:.1f}" text-anchor="end" fill="{t["text"]}" font-size="16" font-weight="600">{y:,.1f}</text>\n'
+        y += step
+
+    # X 轴标签
+    for i, label in enumerate(labels):
+        safe_label = strip_emoji(label) if strip_emoji_flag else label
+        x = ml + i * x_step
+        svg += f'<text x="{x:.1f}" y="{H - mb + 30}" text-anchor="middle" fill="{t["text_secondary"]}" font-size="13">{safe_label}</text>\n'
+
+    # 面积 + 折线
+    base_y = mt + ch - (0 - lo) / (hi - lo) * ch if lo <= 0 <= hi else mt + ch
+    for di, ds in enumerate(datasets):
+        color = ds.get("color", t["colors"][di % len(t["colors"])])
+        vals = ds["values"]
+        pts = [(ml + i * x_step, mt + ch - (v - lo) / (hi - lo) * ch) for i, v in enumerate(vals)]
+        area_pts = pts + [(pts[-1][0], base_y), (pts[0][0], base_y)]
+        area_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in area_pts)
+        svg += f'<polygon points="{area_str}" fill="url(#ag{di})"/>\n'
+        line_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+        svg += f'<polyline points="{line_str}" fill="none" stroke="{color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>\n'
+        for x, y in pts:
+            svg += f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="{color}" stroke="{t["bg"]}" stroke-width="2"/>\n'
+
+    # 坐标轴
+    svg += f'<line x1="{ml}" y1="{mt}" x2="{ml}" y2="{mt + ch}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+    svg += f'<line x1="{ml}" y1="{mt + ch}" x2="{W - mr}" y2="{mt + ch}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+
+    # 图例
+    lx, ly = ml, H - 20
+    for di, ds in enumerate(datasets):
+        color = ds.get("color", t["colors"][di % len(t["colors"])])
+        safe_label = strip_emoji(ds["label"]) if strip_emoji_flag else ds["label"]
+        svg += f'<circle cx="{lx}" cy="{ly}" r="5" fill="{color}"/>\n'
+        svg += f'<text x="{lx + 10}" y="{ly + 5}" fill="{t["text"]}" font-size="14">{safe_label}</text>\n'
+        lx += len(safe_label) * 14 + 30
+
+    svg += '</svg>'
+    return svg
+
+
+def render_svg_bar_chart(labels, datasets, font_name: str = "default", strip_emoji_flag: bool = True):
+    """柱状图 SVG"""
+    t = THEME_COLORS["dark"]
+    W, H = 960, 600
+    ml, mr, mt, mb = 90, 30, 30, 80  # 加大左间距
+    cw, ch = W - ml - mr, H - mt - mb
+
+    all_vals = [v for ds in datasets for v in ds["values"]]
+    v_min, v_max = min(0, min(all_vals)), max(all_vals)
+    lo, hi, step = _nice_scale(v_min, v_max)
+    n = len(labels)
+    nd = len(datasets)
+    group_w = cw / n
+    bar_w = group_w * 0.7 / nd
+    gap = group_w * 0.15
+
+    font_family, _ = get_font(font_name)
+
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" font-family="{font_family}">\n'
+
+    # 网格线 + Y 轴刻度（加大字体、加粗）
+    y = lo
+    while y <= hi + step * 0.01:
+        py = mt + ch - (y - lo) / (hi - lo) * ch
+        svg += f'<line x1="{ml}" y1="{py:.1f}" x2="{W - mr}" y2="{py:.1f}" stroke="{t["grid"]}" stroke-width="1"/>\n'
+        svg += f'<text x="{ml - 14}" y="{py + 6:.1f}" text-anchor="end" fill="{t["text"]}" font-size="16" font-weight="600">{y:,.1f}</text>\n'
+        y += step
+
+    # 柱子
+    base_y = mt + ch - (0 - lo) / (hi - lo) * ch if lo < 0 else mt + ch
+    for i, label in enumerate(labels):
+        safe_label = strip_emoji(label) if strip_emoji_flag else label
+        gx = ml + i * group_w
+        svg += f'<text x="{gx + group_w / 2:.1f}" y="{H - mb + 30}" text-anchor="middle" fill="{t["text_secondary"]}" font-size="13">{safe_label}</text>\n'
+        for di, ds in enumerate(datasets):
+            color = ds.get("color", t["colors"][di % len(t["colors"])])
+            v = ds["values"][i]
+            bx = gx + gap + di * bar_w
+            by = mt + ch - (v - lo) / (hi - lo) * ch
+            bh = abs(base_y - by)
+            top = min(by, base_y)
+            svg += f'<rect x="{bx:.1f}" y="{top:.1f}" width="{bar_w:.1f}" height="{bh:.1f}" rx="4" fill="{color}"/>\n'
+            svg += f'<text x="{bx + bar_w / 2:.1f}" y="{top - 8:.1f}" text-anchor="middle" fill="{t["text"]}" font-size="12" font-weight="600">{v:g}</text>\n'
+
+    # 坐标轴
+    svg += f'<line x1="{ml}" y1="{mt}" x2="{ml}" y2="{mt + ch}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+    svg += f'<line x1="{ml}" y1="{base_y:.1f}" x2="{W - mr}" y2="{base_y:.1f}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+
+    # 图例
+    lx, ly = ml, H - 20
+    for di, ds in enumerate(datasets):
+        color = ds.get("color", t["colors"][di % len(t["colors"])])
+        safe_label = strip_emoji(ds["label"]) if strip_emoji_flag else ds["label"]
+        svg += f'<rect x="{lx}" y="{ly - 6}" width="14" height="14" rx="3" fill="{color}"/>\n'
+        svg += f'<text x="{lx + 20}" y="{ly + 5}" fill="{t["text"]}" font-size="14">{safe_label}</text>\n'
+        lx += len(safe_label) * 14 + 40
+
+    svg += '</svg>'
+    return svg
+
+
+def render_svg_mixed_chart(labels, datasets, font_name: str = "default", strip_emoji_flag: bool = True):
+    """柱状+折线混合图 SVG（双 Y 轴）"""
+    t = THEME_COLORS["dark"]
+    W, H = 960, 600
+    ml, mr, mt, mb = 70, 60, 30, 80
+    cw, ch = W - ml - mr, H - mt - mb
+
+    bar_ds = [ds for ds in datasets if ds.get("type", "bar") == "bar"]
+    line_ds = [ds for ds in datasets if ds.get("type") == "line"]
+    n = len(labels)
+    group_w = cw / n
+    nb = len(bar_ds)
+    bar_w = group_w * 0.6 / max(nb, 1)
+    gap = group_w * 0.2
+
+    # 柱状 Y 轴
+    bar_vals = [v for ds in bar_ds for v in ds["values"]] or [0]
+    blo, bhi, bstep = _nice_scale(min(0, min(bar_vals)), max(bar_vals))
+    # 折线 Y 轴
+    if line_ds:
+        line_vals = [v for ds in line_ds for v in ds["values"]]
+        llo, lhi, lstep = _nice_scale(min(line_vals), max(line_vals))
+    else:
+        llo, lhi, lstep = blo, bhi, bstep
+
+    font_family, _ = get_font(font_name)
+
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" font-family="{font_family}">\n'
+
+    # 左侧网格 + Y 轴（柱状）
+    y = blo
+    while y <= bhi + bstep * 0.01:
+        py = mt + ch - (y - blo) / (bhi - blo) * ch
+        svg += f'<line x1="{ml}" y1="{py:.1f}" x2="{W - mr}" y2="{py:.1f}" stroke="{t["grid"]}" stroke-width="1"/>\n'
+        svg += f'<text x="{ml - 14}" y="{py + 6:.1f}" text-anchor="end" fill="{t["text"]}" font-size="16" font-weight="600">{y:,.1f}</text>\n'
+        y += bstep
+
+    # 右侧 Y 轴（折线）
+    if line_ds:
+        y = llo
+        while y <= lhi + lstep * 0.01:
+            py = mt + ch - (y - llo) / (lhi - llo) * ch
+            svg += f'<text x="{W - mr + 14}" y="{py + 6:.1f}" text-anchor="start" fill="{t["text"]}" font-size="16" font-weight="600">{y:,.1f}</text>\n'
+            y += lstep
+
+    # 柱子
+    base_y = mt + ch - (0 - blo) / (bhi - blo) * ch if blo < 0 else mt + ch
+    for i, label in enumerate(labels):
+        safe_label = strip_emoji(label) if strip_emoji_flag else label
+        gx = ml + i * group_w
+        svg += f'<text x="{gx + group_w / 2:.1f}" y="{H - mb + 30}" text-anchor="middle" fill="{t["text_secondary"]}" font-size="13">{safe_label}</text>\n'
+        for di, ds in enumerate(bar_ds):
+            color = ds.get("color", t["colors"][di % len(t["colors"])])
+            v = ds["values"][i]
+            bx = gx + gap + di * bar_w
+            by = mt + ch - (v - blo) / (bhi - blo) * ch
+            bh = abs(base_y - by)
+            top = min(by, base_y)
+            svg += f'<rect x="{bx:.1f}" y="{top:.1f}" width="{bar_w:.1f}" height="{bh:.1f}" rx="4" fill="{color}"/>\n'
+
+    # 折线
+    x_step = group_w
+    for di, ds in enumerate(line_ds):
+        color = ds.get("color", t["colors"][len(bar_ds) + di % len(t["colors"])])
+        pts = []
+        for i, v in enumerate(ds["values"]):
+            x = ml + i * x_step + x_step / 2
+            y = mt + ch - (v - llo) / (lhi - llo) * ch
+            pts.append(f"{x:.1f},{y:.1f}")
+        svg += f'<polyline points="{" ".join(pts)}" fill="none" stroke="{color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>\n'
+        for i, v in enumerate(ds["values"]):
+            x = ml + i * x_step + x_step / 2
+            y = mt + ch - (v - llo) / (lhi - llo) * ch
+            svg += f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="{color}" stroke="{t["bg"]}" stroke-width="2"/>\n'
+
+    # 坐标轴
+    svg += f'<line x1="{ml}" y1="{mt}" x2="{ml}" y2="{mt + ch}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+    svg += f'<line x1="{ml}" y1="{base_y:.1f}" x2="{W - mr}" y2="{base_y:.1f}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+    svg += f'<line x1="{W - mr}" y1="{mt}" x2="{W - mr}" y2="{mt + ch}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+
+    # 图例
+    lx, ly = ml, H - 20
+    for ds in bar_ds:
+        color = ds.get("color", t["colors"][0])
+        safe_label = strip_emoji(ds["label"]) if strip_emoji_flag else ds["label"]
+        svg += f'<rect x="{lx}" y="{ly - 6}" width="14" height="14" rx="3" fill="{color}"/>\n'
+        svg += f'<text x="{lx + 20}" y="{ly + 5}" fill="{t["text"]}" font-size="14">{safe_label}</text>\n'
+        lx += len(safe_label) * 14 + 40
+    for di, ds in enumerate(line_ds):
+        color = ds.get("color", t["colors"][len(bar_ds) + di % len(t["colors"])])
+        safe_label = strip_emoji(ds["label"]) if strip_emoji_flag else ds["label"]
+        svg += f'<circle cx="{lx}" cy="{ly}" r="5" fill="{color}"/>\n'
+        svg += f'<text x="{lx + 10}" y="{ly + 5}" fill="{t["text"]}" font-size="14">{safe_label}</text>\n'
+        lx += len(safe_label) * 14 + 30
+
+    svg += '</svg>'
+    return svg
+
+
+def render_svg_pie_chart(items, font_name: str = "default", donut=False, strip_emoji_flag: bool = True):
+    """饼图/环形图 SVG"""
+    t = THEME_COLORS["dark"]
+    W, H = 960, 600
+    cx, cy, r = W / 2, 260, 180
+    total = sum(it["value"] for it in items)
+
+    font_family, _ = get_font(font_name)
+
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" font-family="{font_family}">\n'
+
+    start_angle = -90
+    for i, it in enumerate(items):
+        color = it.get("color", t["colors"][i % len(t["colors"])])
+        pct = it["value"] / total
+        angle = pct * 360
+        end_angle = start_angle + angle
+        large = 1 if angle > 180 else 0
+
+        sr = math.radians(start_angle)
+        er = math.radians(end_angle)
+        x1 = cx + r * math.cos(sr)
+        y1 = cy + r * math.sin(sr)
+        x2 = cx + r * math.cos(er)
+        y2 = cy + r * math.sin(er)
+
+        if donut:
+            ri = r * 0.58
+            x3 = cx + ri * math.cos(er)
+            y3 = cy + ri * math.sin(er)
+            x4 = cx + ri * math.cos(sr)
+            y4 = cy + ri * math.sin(sr)
+            svg += f'<path d="M{x1:.1f},{y1:.1f} A{r},{r} 0 {large},1 {x2:.1f},{y2:.1f} L{x3:.1f},{y3:.1f} A{ri},{ri} 0 {large},0 {x4:.1f},{y4:.1f} Z" fill="{color}" stroke="{t["bg"]}" stroke-width="2"/>\n'
+        else:
+            svg += f'<path d="M{cx},{cy} L{x1:.1f},{y1:.1f} A{r},{r} 0 {large},1 {x2:.1f},{y2:.1f} Z" fill="{color}" stroke="{t["bg"]}" stroke-width="2"/>\n'
+
+        # 百分比标签
+        mid = math.radians(start_angle + angle / 2)
+        lr = r * (0.72 if donut else 0.65)
+        lx = cx + lr * math.cos(mid)
+        ly = cy + lr * math.sin(mid)
+        if pct >= 0.06:
+            svg += f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="15" font-weight="700">{pct * 100:.0f}%</text>\n'
+
+        start_angle = end_angle
+
+    # 环形图中心文字
+    if donut:
+        svg += f'<text x="{cx}" y="{cy - 8}" text-anchor="middle" fill="{t["text"]}" font-size="28" font-weight="900">总计</text>\n'
+        svg += f'<text x="{cx}" y="{cy + 22}" text-anchor="middle" fill="{t["text_secondary"]}" font-size="16">{total:g}</text>\n'
+
+    # 图例（两列布局）
+    cols = 2
+    col_w = 260
+    lx0 = cx - col_w * cols / 2 + 20
+    ly0 = cy + r + 50
+    for i, it in enumerate(items):
+        color = it.get("color", t["colors"][i % len(t["colors"])])
+        col = i % cols
+        row = i // cols
+        x = lx0 + col * col_w
+        y = ly0 + row * 32
+        svg += f'<circle cx="{x}" cy="{y}" r="6" fill="{color}"/>\n'
+        pct = it["value"] / total * 100
+        safe_label = strip_emoji(it["label"]) if strip_emoji_flag else it["label"]
+        svg += f'<text x="{x + 16}" y="{y + 5}" fill="{t["text"]}" font-size="14">{safe_label}  {it["value"]:g} ({pct:.0f}%)</text>\n'
+
+    svg += '</svg>'
+    return svg
+
+
+def render_svg_donut_chart(items, font_name: str = "default", strip_emoji_flag: bool = True):
+    """环形图 SVG"""
+    return render_svg_pie_chart(items, font_name, donut=True, strip_emoji_flag=strip_emoji_flag)
+
+
+# ──────────────── K线图 (Candlestick) ────────────────
+
+def render_svg_candle_chart(labels, ohlc_values, font_name: str = "default", strip_emoji_flag: bool = True):
+    """K线图 SVG — OHLC 数据渲染
+    
+    ohlc_values: [{"o": open, "h": high, "l": low, "c": close}, ...]
+    """
+    t = THEME_COLORS["dark"]
+    W, H = 960, 600
+    ml, mr, mt, mb = 90, 30, 30, 80  # 左间距加大，给Y轴标签留空间
+    cw, ch = W - ml - mr, H - mt - mb
+    n = len(ohlc_values)
+    if n == 0:
+        return "<svg></svg>"
+    x_step = cw / max(n, 1)
+
+    all_vals = []
+    for v in ohlc_values:
+        all_vals.extend([v["h"], v["l"]])
+    v_min, v_max = min(all_vals), max(all_vals)
+    lo, hi, step = _nice_scale(v_min, v_max)
+
+    font_family, _ = get_font(font_name)
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" font-family="{font_family}">\n'
+
+    # 网格线 + Y 轴刻度（加大字体）
+    y = lo
+    while y <= hi + step * 0.01:
+        py = mt + ch - (y - lo) / (hi - lo) * ch
+        svg += f'<line x1="{ml}" y1="{py:.1f}" x2="{W - mr}" y2="{py:.1f}" stroke="{t["grid"]}" stroke-width="1"/>\n'
+        # 价格标签：字体从13→16，颜色更亮
+        svg += f'<text x="{ml - 14}" y="{py + 6:.1f}" text-anchor="end" fill="{t["text"]}" font-size="16" font-weight="600">{y:,.0f}</text>\n'
+        y += step
+
+    label_skip = max(1, n // 12)
+    for i, label in enumerate(labels):
+        if i % label_skip != 0 and i != n - 1:
+            continue
+        safe_label = strip_emoji(str(label)) if strip_emoji_flag else str(label)
+        x = ml + (i + 0.5) * x_step
+        svg += f'<text x="{x:.1f}" y="{H - mb + 30}" text-anchor="middle" fill="{t["text_secondary"]}" font-size="13">{safe_label}</text>\n'
+
+    closes = [v["c"] for v in ohlc_values]
+    pts = []
+    for i, cl in enumerate(closes):
+        x = ml + (i + 0.5) * x_step
+        py = mt + ch - (cl - lo) / (hi - lo) * ch
+        pts.append(f"{x:.1f},{py:.1f}")
+    svg += f'<polyline points="{" ".join(pts)}" fill="none" stroke="{t["colors"][3]}" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.6"/>\n'
+    svg += f'<text x="{ml + 10}" y="{mt + 18}" fill="{t["colors"][3]}" font-size="13" opacity="0.7">收盘价连线</text>\n'
+
+    candle_width = max(4, x_step * 0.6)
+    half_width = candle_width / 2
+
+    for i, v in enumerate(ohlc_values):
+        o, h_val, l_val, c = v["o"], v["h"], v["l"], v["c"]
+        cx = ml + (i + 0.5) * x_step
+        is_green = c >= o
+        color = t["colors"][1] if is_green else t["colors"][3]
+        svg += f'<line x1="{cx:.1f}" y1="{mt + ch - (h_val - lo) / (hi - lo) * ch:.1f}" x2="{cx:.1f}" y2="{mt + ch - (l_val - lo) / (hi - lo) * ch:.1f}" stroke="{color}" stroke-width="1.5"/>\n'
+        body_top = mt + ch - (max(o, c) - lo) / (hi - lo) * ch
+        body_bot = mt + ch - (min(o, c) - lo) / (hi - lo) * ch
+        body_h = body_bot - body_top
+        if body_h < 2:
+            body_h = 2
+        svg += f'<rect x="{cx - half_width:.1f}" y="{body_top:.1f}" width="{candle_width:.1f}" height="{body_h:.1f}" fill="{color}" rx="1.5"/>\n'
+
+    svg += f'<line x1="{ml}" y1="{mt}" x2="{ml}" y2="{mt + ch}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+    svg += f'<line x1="{ml}" y1="{mt + ch}" x2="{W - mr}" y2="{mt + ch}" stroke="{t["axis"]}" stroke-width="1.5"/>\n'
+    svg += '</svg>'
+    return svg
+
+
+# ──────────────── Binance API ────────────────
+
+def fetch_binance_klines(symbol: str = "BTCUSDT", interval: str = "1d", limit: int = 30):
+    """从币安 API 获取 K 线数据（无需 API Key，优先直连）
+    
+    现货 API 找不到的币种（如 XAUUSDT、XAGUSDT）自动回退到合约 API。
+    """
+    import urllib.request, json
+    from datetime import datetime as _dt
+
+    sym = symbol.upper()
+    
+    def _fetch_url(url):
+        req = urllib.request.Request(url, headers={"User-Agent": "Hermes/1.0"})
+        proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or ""
+        try:
+            if proxy:
+                proxy_handler = urllib.request.ProxyHandler({"https": proxy, "http": proxy})
+                with urllib.request.build_opener(proxy_handler).open(req, timeout=15) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            else:
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            # 读取 4xx/5xx 响应的 body（币安会返回 JSON 错误信息）
+            body = json.loads(e.read().decode("utf-8"))
+            return body
+
+    # 先试现货 API
+    spot_url = f"https://api.binance.com/api/v3/klines?symbol={sym}&interval={interval}&limit={limit}"
+    try:
+        raw = _fetch_url(spot_url)
+        if isinstance(raw, dict) and raw.get("code") == -1121:
+            # 无效 symbol，尝试合约 API
+            raise ValueError("SPOT_SYMBOL_NOT_FOUND")
+    except Exception as e:
+        if str(e) == "SPOT_SYMBOL_NOT_FOUND" or getattr(e, 'code', None) == -1121:
+            print(f"[INFO] 现货无 {sym}，尝试合约 API...")
+            futures_url = f"https://fapi.binance.com/fapi/v1/klines?symbol={sym}&interval={interval}&limit={limit}"
+            try:
+                raw = _fetch_url(futures_url)
+            except Exception as fe:
+                print(f"[ERROR] 币安合约 API 请求失败: {fe}")
+                sys.exit(1)
+        else:
+            print(f"[ERROR] 币安 API 请求失败: {e}")
+            sys.exit(1)
+
+    labels, ohlc_values = [], []
+    for k in raw:
+        ts = k[0] / 1000
+        dt_obj = _dt.fromtimestamp(ts)
+        if interval in ("1d", "1w", "1M"):
+            labels.append(dt_obj.strftime("%m-%d"))
+        elif interval == "1h":
+            labels.append(dt_obj.strftime("%m-%d %H:00"))
+        else:
+            labels.append(dt_obj.strftime("%H:%M"))
+        ohlc_values.append({"o": float(k[1]), "h": float(k[2]), "l": float(k[3]), "c": float(k[4])})
+    return labels, ohlc_values
+
+
+def _build_description_html(desc, strip_emoji_flag: bool = True):
+    """从描述数据构建 HTML"""
+    if not desc:
+        return ""
+
+    parts = ['<div class="description">']
+
+    if isinstance(desc, str):
+        safe_desc = strip_emoji(desc) if strip_emoji_flag else desc
+        parts.append(f'<p class="desc-text">{safe_desc}</p>')
+    elif isinstance(desc, dict):
+        if desc.get("title"):
+            safe_title = strip_emoji(desc["title"]) if strip_emoji_flag else desc["title"]
+            parts.append(f'<div class="desc-title">{safe_title}</div>')
+        if desc.get("text"):
+            safe_text = strip_emoji(desc["text"]) if strip_emoji_flag else desc["text"]
+            parts.append(f'<p class="desc-text">{safe_text}</p>')
+        if desc.get("points"):
+            parts.append('<ul class="desc-list">')
+            for pt in desc["points"]:
+                if isinstance(pt, dict):
+                    label = pt.get("label", "")
+                    value = pt.get("value", "")
+                    safe_label = strip_emoji(label) if strip_emoji_flag else label
+                    safe_value = strip_emoji(value) if strip_emoji_flag else value
+                    parts.append(f'<li class="desc-item"><span class="desc-highlight">{safe_label}</span> {safe_value}</li>')
+                else:
+                    safe_pt = strip_emoji(pt) if strip_emoji_flag else pt
+                    parts.append(f'<li class="desc-item">{safe_pt}</li>')
+            parts.append('</ul>')
+    elif isinstance(desc, list):
+        parts.append('<ul class="desc-list">')
+        for item in desc:
+            safe_item = strip_emoji(item) if strip_emoji_flag else item
+            parts.append(f'<li class="desc-item">{safe_item}</li>')
+        parts.append('</ul>')
+
+    parts.append('</div>')
+    return "\n    ".join(parts)
+
+
+def render_chart(
+    title, chart_type, chart_data, subtitle="", footer="", description=None,
+    font_name: str = "default", strip_emoji_flag: bool = True,
+):
+    """渲染图表卡片 HTML"""
+    html = load_template("chart.html")
+
+    renderers = {
+        "line": lambda: render_svg_line_chart(chart_data["labels"], chart_data["datasets"], font_name, strip_emoji_flag),
+        "area": lambda: render_svg_area_chart(chart_data["labels"], chart_data["datasets"], font_name, strip_emoji_flag),
+        "bar": lambda: render_svg_bar_chart(chart_data["labels"], chart_data["datasets"], font_name, strip_emoji_flag),
+        "mixed": lambda: render_svg_mixed_chart(chart_data["labels"], chart_data["datasets"], font_name, strip_emoji_flag),
+        "pie": lambda: render_svg_pie_chart(chart_data["items"], font_name, strip_emoji_flag=strip_emoji_flag),
+        "donut": lambda: render_svg_donut_chart(chart_data["items"], font_name, strip_emoji_flag=strip_emoji_flag),
+        "candle": lambda: render_svg_candle_chart(chart_data["labels"], chart_data["values"], font_name, strip_emoji_flag),
+    }
+
+    renderer = renderers.get(chart_type)
+    if not renderer:
+        print(f"[ERROR] 不支持的图表类型: {chart_type}，可选: {', '.join(renderers.keys())}")
+        sys.exit(1)
+
+    chart_svg = renderer()
+    desc_html = _build_description_html(description, strip_emoji_flag)
+
+    if not footer:
+        footer = "以上数据仅供参考，不构成投资建议"
+
+    html = html.replace("{{TITLE}}", strip_emoji(title) if strip_emoji_flag else title)
+    html = html.replace("{{SUBTITLE}}", strip_emoji(subtitle) if strip_emoji_flag else subtitle)
+    html = html.replace("{{CHART_HTML}}", chart_svg)
+    html = html.replace("{{DESCRIPTION}}", desc_html)
+    html = html.replace("{{FOOTER}}", strip_emoji(footer) if strip_emoji_flag else footer)
+    html = html.replace("{{STYLE_CLASS}}", "dark")
+
+    font_family, font_face_css = get_font(font_name)
+    html = html.replace("{{FONT_FACE}}", font_face_css)
+    html = html.replace("{{FONT_FAMILY}}", font_family)
+
+    return html
+
+
+# ========================
+# 截图和文件管理
+# ========================
+
+async def screenshot_html(html: str, output_path: str, width: int = 1080, height: int = 1440):
+    """用 Playwright 截图"""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={"width": width, "height": height})
+
+        await page.set_content(html, wait_until="networkidle")
+        await page.screenshot(path=output_path, full_page=True)
+
+        await browser.close()
+
+    return output_path
+
+
+def ensure_output_dir():
+    """确保输出目录存在（按日期组织）"""
+    DEFAULT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    return DEFAULT_OUTPUT_DIR
+
+
+def generate_filename(prefix: str = "xhs", variant: str = "") -> str:
+    """生成文件名（按日期 + 变体序号）"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if variant:
+        return f"{prefix}_{timestamp}_{variant}.png"
+    return f"{prefix}_{timestamp}.png"
+
+
+# ========================
+# 多模板变体生成
+# ========================
+
+TEMPLATE_VARIANTS = [
+    {"template": "minimal", "desc": "极简标题"},
+    {"template": "card", "desc": "要点卡片"},
+]
+
+
+def render_variants(
+    title: str, subtitle: str, points: list[str],
+    count: int, font_name: str, strip_emoji_flag: bool,
+) -> list[tuple[str, str]]:
+    """生成多个模板变体，返回 (html, template_desc) 列表"""
+    results = []
+
+    for i in range(count):
+        var = TEMPLATE_VARIANTS[i % len(TEMPLATE_VARIANTS)]
+        tpl = var["template"]
+        desc = var["desc"]
+
+        if tpl == "minimal":
+            html = render_minimal(title, subtitle, font_name, strip_emoji_flag)
+        elif tpl == "card":
+            html = render_card(title, subtitle, points, font_name=font_name, strip_emoji_flag=strip_emoji_flag)
+        else:
+            html = render_minimal(title, subtitle, font_name, strip_emoji_flag)
+
+        results.append((html, desc))
+
+    return results
+
+
+# ========================
+# 文案生成
+# ========================
+
+def render_post_text(post_data):
+    """从帖子配置生成配套文案文本"""
+    lines = []
+
+    # 标题
+    titles = post_data.get("titles", [])
+    if titles:
+        lines.append("标题备选：")
+        for i, t in enumerate(titles, 1):
+            lines.append(f"  {i}. {t}")
+        lines.append("")
+
+    # 正文
+    body = post_data.get("body", "")
+    if body:
+        if isinstance(body, list):
+            lines.extend(body)
+        else:
+            lines.append(body)
+        lines.append("")
+
+    # 标签
+    tags = post_data.get("tags", [])
+    if tags:
+        lines.append(" ".join(tags))
+        lines.append("")
+
+    # 风险提示
+    disclaimer = post_data.get("disclaimer", "")
+    if disclaimer:
+        lines.append("---")
+        lines.append(disclaimer)
+
+    return "\n".join(lines)
+
+
+# ========================
+# 完整帖子生成（generate 子命令）
+# ========================
+
+async def cmd_generate(config_path, output_dir, font_name="default", count=1, strip_emoji_flag=True):
+    """生成完整帖子：图片 + 配套文案"""
+    with open(config_path, "r", encoding="utf-8") as f:
+        post = json.load(f)
+
+    # 准备输出目录
+    out_dir = Path(output_dir) if output_dir else ensure_output_dir()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # 1. 生成文案
+    text = render_post_text(post)
+    text_path = out_dir / f"xhs_{timestamp}.txt"
+    text_path.write_text(text, encoding="utf-8")
+    print(f"文案已生成: {text_path}")
+
+    # 2. 生成封面图（可多张）
+    image_cfg = post.get("image", {})
+    if image_cfg:
+        for i in range(count):
+            variant_suffix = f"_{i}" if count > 1 else ""
+            tpl = image_cfg.get("template", "chart")
+            chart_type = image_cfg.get("chart_type", "line")
+            img_config_path = image_cfg.get("config")
+            img_title = image_cfg.get("title", post.get("titles", [""])[0] if post.get("titles") else "")
+            img_subtitle = image_cfg.get("subtitle", "")
+            img_footer = image_cfg.get("footer", post.get("disclaimer", ""))
+            description = image_cfg.get("description")
+
+            # 加载图表数据
+            chart_data = {}
+            if img_config_path:
+                with open(img_config_path, "r", encoding="utf-8") as f:
+                    img_cfg_data = json.load(f)
+                chart_data = img_cfg_data.get("chart_data", {})
+                chart_type = img_cfg_data.get("chart_type", chart_type)
+                description = img_cfg_data.get("description", description)
+                img_title = img_cfg_data.get("title", img_title)
+                img_subtitle = img_cfg_data.get("subtitle", img_subtitle)
+                img_footer = img_cfg_data.get("footer", img_footer)
+            else:
+                chart_data = image_cfg.get("chart_data", {})
+
+            if tpl == "chart":
+                html = render_chart(
+                    img_title, chart_type, chart_data, img_subtitle, img_footer,
+                    description, font_name=font_name, strip_emoji_flag=strip_emoji_flag,
+                )
+            else:
+                points = image_cfg.get("points", [])
+                html = render_card(
+                    title=img_title, subtitle=img_subtitle, points=points,
+                    footer=img_footer, font_name=font_name, strip_emoji_flag=strip_emoji_flag,
+                )
+
+            img_path = out_dir / f"xhs_{timestamp}{variant_suffix}.png"
+            await screenshot_html(html, str(img_path))
+            print(f"封面图已生成: {img_path}")
+
+    # 3. 输出到控制台
+    print("\n" + "=" * 40)
+    print(text)
+    print("=" * 40)
+
+    return str(text_path)
+
+
+# ========================
+# 主入口
+# ========================
+
+async def main():
+    parser = argparse.ArgumentParser(description="小红书财经封面图生成器 v2")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # generate 子命令
+    gen_parser = subparsers.add_parser("generate", help="生成完整帖子（图片+文案）")
+    gen_parser.add_argument("config", type=str, help="帖子 JSON 配置文件")
+    gen_parser.add_argument("--output-dir", type=str, help="输出目录（默认 output/YYYY-MM-DD/）")
+    gen_parser.add_argument("--font", type=str, default="default",
+                            choices=FONT_PRESETS,
+                            help="字体预设")
+    gen_parser.add_argument("--count", type=int, default=1,
+                            help="生成图片数量（变体）")
+
+    # 原有参数（向后兼容）
+    parser.add_argument("--title", type=str, help="卡片标题")
+    parser.add_argument("--subtitle", type=str, default="", help="副标题")
+    parser.add_argument("--points", nargs="*", help="要点列表")
+    parser.add_argument("--footer", type=str, default="", help="底部文字")
+    parser.add_argument("--font", type=str, default="default",
+                        choices=FONT_PRESETS,
+                        help="字体预设: default / modern / classic / simple")
+    parser.add_argument("--count", type=int, default=1,
+                        help="生成图片数量（变体，默认 1）")
+    parser.add_argument("--template", type=str, default="card",
+                        choices=["card", "minimal", "data", "table", "comparison", "kpi", "ranking", "chart", "flex"],
+                        help="模板类型")
+    parser.add_argument("--chart-type", type=str, default="line",
+                        choices=["line", "bar", "pie", "donut", "area", "mixed", "candle"],
+                        help="图表类型（仅 chart 模板）")
+    parser.add_argument("--config", type=str, help="JSON 配置文件路径")
+    parser.add_argument("--binance", type=str, default="",
+                        help="从币安获取K线数据，如 BTCUSDT ETHUSDT SOLUSDT")
+    parser.add_argument("--interval", type=str, default="1d",
+                        choices=["1m","5m","15m","30m","1h","4h","1d","1w","1M"],
+                        help="K线周期（配合 --binance）")
+    parser.add_argument("--limit", type=int, default=30,
+                        help="获取K线条数（配合 --binance，最大1000）")
+    parser.add_argument("--output", type=str, help="输出文件路径")
+    parser.add_argument("--output-dir", type=str,
+                        help="输出目录（默认 output/YYYY-MM-DD/）")
+    parser.add_argument("--width", type=int, default=1080, help="图片宽度")
+    parser.add_argument("--height", type=int, default=1440, help="图片高度")
+
+    args = parser.parse_args()
+
+    # 获取字体和 emoji 设置
+    font_name = args.font
+    count = args.count
+    strip_emoji_flag = True  # 始终开启
+
+    # generate 子命令
+    if args.command == "generate":
+        await cmd_generate(
+            args.config, args.output_dir,
+            font_name=font_name, count=count, strip_emoji_flag=strip_emoji_flag,
+        )
+        return
+
+    # 确定输出目录
+    if args.output_dir:
+        out_dir = Path(args.output_dir)
+    else:
+        out_dir = ensure_output_dir()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # 从 JSON 配置加载
+    if args.config:
+        with open(args.config, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        args.title = config.get("title", args.title)
+        args.subtitle = config.get("subtitle", args.subtitle)
+        args.points = config.get("points", args.points)
+        args.footer = config.get("footer", args.footer)
+        args.template = config.get("template", args.template)
+        args.chart_type = config.get("chart_type", args.chart_type)
+
+    if not args.title:
+        print("[ERROR] 必须提供 --title 参数")
+        sys.exit(1)
+
+    # 渲染 HTML（支持多张变体）
+    html_list = []
+
+    if count == 1:
+        # 单张：正常渲染
+        if args.template == "minimal":
+            html = render_minimal(args.title, args.subtitle, font_name, strip_emoji_flag)
+            html_list.append(html)
+        elif args.template == "data":
+            data_items = []
+            if args.config:
+                with open(args.config, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                data_items = config.get("data_items", [])
+            html = render_data_card(args.title, data_items, args.footer, font_name, strip_emoji_flag)
+            html_list.append(html)
+        elif args.template == "table":
+            headers = []
+            rows = []
+            if args.config:
+                with open(args.config, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                headers = config.get("headers", [])
+                rows = config.get("rows", [])
+            html = render_table_card(args.title, headers, rows, args.subtitle, args.footer, font_name, strip_emoji_flag)
+            html_list.append(html)
+        elif args.template == "comparison":
+            left_name = ""
+            right_name = ""
+            items = []
+            if args.config:
+                with open(args.config, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                left_name = config.get("left_name", "")
+                right_name = config.get("right_name", "")
+                items = config.get("compare_items", [])
+            html = render_comparison_card(args.title, left_name, right_name, items, args.subtitle, args.footer, font_name, strip_emoji_flag)
+            html_list.append(html)
+        elif args.template == "kpi":
+            kpis = []
+            if args.config:
+                with open(args.config, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                kpis = config.get("kpis", [])
+            html = render_kpi_card(args.title, kpis, args.subtitle, args.footer, font_name, strip_emoji_flag)
+            html_list.append(html)
+        elif args.template == "ranking":
+            items = []
+            if args.config:
+                with open(args.config, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                items = config.get("ranking_items", [])
+            html = render_ranking_card(args.title, items, args.subtitle, args.footer, font_name, strip_emoji_flag)
+            html_list.append(html)
+        elif args.template == "chart":
+            chart_data = {}
+            chart_type = args.chart_type
+            description = None
+
+            # Binance 模式：从币安 API 获取实时 K 线数据
+            if args.binance:
+                symbol = args.binance.upper()
+                chart_type = "candle"
+                print(f"[INFO] 正在从币安获取 {symbol} {args.interval} K线数据...")
+                labels, ohlc_values = fetch_binance_klines(symbol, args.interval, args.limit)
+                chart_data = {"labels": labels, "values": ohlc_values}
+                if not args.title:
+                    args.title = f"{symbol} {args.interval} K线"
+                args.subtitle = args.subtitle or f"最近 {len(labels)} 根 {args.interval} K线 | 数据来源: Binance"
+
+            # 传统模式：从 JSON 配置文件加载
+            if args.config:
+                with open(args.config, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                chart_data = config.get("chart_data", {})
+                chart_type = config.get("chart_type", chart_type)
+                description = config.get("description")
+            html = render_chart(
+                title=args.title,
+                chart_type=chart_type,
+                chart_data=chart_data,
+                subtitle=args.subtitle,
+                footer=args.footer,
+                description=description,
+                font_name=font_name,
+                strip_emoji_flag=strip_emoji_flag,
+            )
+            html_list.append(html)
+        elif args.template == "flex":
+            html = load_template("flex.html")
+            content = ""
+            if args.config:
+                with open(args.config, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                content = cfg.get("content", "")
+            font_family, font_face_css = get_font(font_name)
+            html = html.replace("{{FONT_FACE}}", font_face_css)
+            html = html.replace("{{FONT_FAMILY}}", font_family)
+            html = html.replace("{{STYLE_CLASS}}", "dark")
+            html = html.replace("{{TITLE}}", strip_emoji(args.title) if strip_emoji_flag else args.title)
+            html = html.replace("{{SUBTITLE}}", strip_emoji(args.subtitle) if strip_emoji_flag else args.subtitle)
+            html = html.replace("{{CONTENT}}", content)
+            html = html.replace("{{FOOTER}}", strip_emoji(args.footer) if strip_emoji_flag else args.footer)
+            html_list.append(html)
+        else:
+            html = render_card(
+                title=args.title,
+                subtitle=args.subtitle,
+                points=args.points or [],
+                footer=args.footer,
+                font_name=font_name,
+                strip_emoji_flag=strip_emoji_flag,
+            )
+            html_list.append(html)
+    else:
+        # 多张变体：默认模板轮换
+        points = args.points or []
+        variants = render_variants(args.title, args.subtitle, points, count, font_name, strip_emoji_flag)
+        html_list = [h for h, _ in variants]
+
+    # 截图
+    results = []
+    for i, html in enumerate(html_list):
+        if args.output:
+            output_path = args.output
+        else:
+            variant = f"v{i}" if count > 1 else ""
+            output_path = str(out_dir / generate_filename(variant=variant))
+
+        print(f"[{i + 1}/{len(html_list)}] 正在生成封面图...")
+        result = await screenshot_html(html, output_path, args.width, args.height)
+        results.append(result)
+        print(f"[OK] {result}")
+
+    return results
+
+
+if __name__ == "__main__":
+    import asyncio
+    # Windows 控制台 UTF-8 支持
+    if sys.platform == "win32":
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+    asyncio.run(main())

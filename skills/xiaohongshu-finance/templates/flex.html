@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<style>{{FONT_FACE}}{{BASE_CSS}}
+.title { font-size: 48px; font-weight: 900; line-height: 1.35; letter-spacing: -1px; margin-bottom: 8px; }
+.dark .title { color: #EAE0CF; }
+.light .title { color: #1a1f36; }
+.subtitle { font-size: 22px; line-height: 1.6; margin-bottom: 40px; }
+.dark .subtitle { color: rgba(234,224,207,0.5); }
+.light .subtitle { color: rgba(0,0,0,0.4); }
+.footer { margin-top: 20px; padding-top: 24px; font-size: 20px; text-align: center; }
+.dark .footer { color: rgba(234,224,207,0.4); border-top: 1px solid rgba(234,224,207,0.08); }
+.light .footer { color: rgba(0,0,0,0.3); border-top: 1px solid rgba(0,0,0,0.06); }
+.accent-line { width: 80px; height: 4px; border-radius: 2px; margin-bottom: 30px; }
+.dark .accent-line { background: linear-gradient(90deg, #7288AE, transparent); }
+.light .accent-line { background: linear-gradient(90deg, #4B5694, transparent); }
+.section-title { font-size: 26px; font-weight: 700; margin: 24px 0 12px; }
+.dark .section-title { color: #EAE0CF; }
+.light .section-title { color: #1a1f36; }
+</style>
+</head>
+<body>
+<div class="container {{STYLE_CLASS}}">
+  <div class="glow glow-{{STYLE_CLASS}}"></div>
+  <div class="glow glow-bottom glow-{{STYLE_CLASS}}"></div>
+  <div class="deco-grid deco-grid-{{STYLE_CLASS}}"></div>
+  <div class="watermark watermark-{{STYLE_CLASS}}">IBOOK</div>
+
+  <div class="card">
+    <div class="accent-line"></div>
+    <div class="title">{{TITLE}}</div>
+    <div class="subtitle">{{SUBTITLE}}</div>
+
+    {{CONTENT}}
+
+    <div class="footer">{{FOOTER}}</div>
+  </div>
+</div>
+</body>
+</html>

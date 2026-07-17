@@ -1,0 +1,94 @@
+/* ============================================
+   小红书财经封面图 — 基础框架样式
+   仅控制布局和氛围，内容样式由 AI 自行生成。
+   ============================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: {{FONT_FAMILY}};
+  width: 1080px;
+  min-height: 1440px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── 深色主题（默认） ── */
+.dark {
+  background: linear-gradient(160deg, #111844 0%, #1a1f36 40%, #1f2847 100%);
+  color: #e8e8e8;
+}
+.dark .card {
+  background: rgba(75,86,148,0.15);
+  border: 1px solid rgba(75,86,148,0.3);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+/* ── 浅色主题 ── */
+.light {
+  background: linear-gradient(160deg, #f5f5f0 0%, #e8e4dc 40%, #ddd8d0 100%);
+  color: #333;
+}
+.light .card {
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+}
+
+/* ── 通用布局 ── */
+.container {
+  width: 100%;
+  min-height: 1440px;
+  padding: 80px 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.card {
+  position: relative; z-index: 1;
+  border-radius: 24px;
+  padding: 60px 50px;
+}
+.glow {
+  position: absolute;
+  top: -200px; right: -200px;
+  width: 600px; height: 600px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.glow-bottom {
+  position: absolute;
+  bottom: -300px; left: -200px;
+  width: 700px; height: 700px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.glow-dark { background: radial-gradient(circle, rgba(75,86,148,0.12) 0%, transparent 70%); }
+.glow-light { background: radial-gradient(circle, rgba(75,86,148,0.06) 0%, transparent 70%); }
+.deco-grid-dark { background-image:
+  linear-gradient(rgba(114,136,174,0.1) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(114,136,174,0.1) 1px, transparent 1px); }
+.deco-grid-light { background-image:
+  linear-gradient(rgba(75,86,148,0.06) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(75,86,148,0.06) 1px, transparent 1px); }
+.watermark {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-size: 180px; font-weight: 900;
+  letter-spacing: 20px;
+  pointer-events: none; z-index: 0;
+  white-space: nowrap; user-select: none;
+  color: rgba(234,224,207,0.03);
+}
+.watermark-light { color: rgba(75,86,148,0.03); }
+
+/* ── 装饰元素 ── */
+.deco-grid {
+  position: absolute; inset: 0;
+  background-size: 80px 80px;
+  pointer-events: none; z-index: 0;
+}
