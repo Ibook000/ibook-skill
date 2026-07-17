@@ -267,3 +267,13 @@ ibook-skill/
 <p align="center">
   <sub>Made by <a href="https://github.com/Ibook000">Ibook000</a> · 持续补充中</sub>
 </p>
+
+### 📸 技能生成内容展示
+
+以下是 `xiaohongshu-finance` 技能直接生成的图片和排版效果（1080×1440）：
+
+<p align="center">
+  <img src="skills/xiaohongshu-finance/examples/demo_astock.png" width="30%" alt="A股强劲反弹（Flex 自由排版）">
+  <img src="skills/xiaohongshu-finance/examples/demo_dividend.png" width="30%" alt="中美高股息对比（Bar 柱状图）">
+  <img src="skills/xiaohongshu-finance/examples/demo_investing.png" width="30%" alt="基金定投3大铁律（Card 要点卡片）">
+</p>
