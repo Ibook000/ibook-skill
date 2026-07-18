@@ -12,63 +12,79 @@ import re, json, sys
 
 PROXY = {'https': 'socks5://127.0.0.1:1080'}
 def us_kline_sina(ticker="AAPL", num=2500):
-    import requests
-    r = requests.get(
-        "https://stock.finance.sina.com.cn/usstock/api/jsonp.php/var/US_MinKService.getDailyK",
-        params={"symbol": ticker.upper(), "num": num},
-        headers={"Referer": "https://finance.sina.com.cn/"}, timeout=15)
-    m = re.search(r'\((\[.+\])\)', r.text)
-    return [{"date":i.get("d"),"o":float(i.get("o",0)),"h":float(i.get("h",0)),
-             "l":float(i.get("l",0)),"c":float(i.get("c",0))}
-            for i in __import__('json').loads(m.group(1))] if m else []
+    try:
+        import requests
+        r = requests.get(
+            "https://stock.finance.sina.com.cn/usstock/api/jsonp.php/var/US_MinKService.getDailyK",
+            params={"symbol": ticker.upper(), "num": num},
+            headers={"Referer": "https://finance.sina.com.cn/"}, timeout=15)
+        m = re.search(r'\((\[.+\])\)', r.text)
+        return [{"date":i.get("d"),"o":float(i.get("o",0)),"h":float(i.get("h",0)),
+                 "l":float(i.get("l",0)),"c":float(i.get("c",0))}
+                for i in __import__('json').loads(m.group(1))] if m else []
+    except Exception as e:
+        print(f"[ERROR] 获取新浪美股K线失败: {e}", file=sys.stderr)
+        return []
 
 # ── 港股/美股K线 · Yahoo（需SOCKS5）──
 def global_kline_yahoo(symbol="^HSI", range_="10y"):
-    import requests
-    from datetime import datetime as dt
-    r = requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
-        params={"interval":"1d","range":range_},
-        headers={"User-Agent":"Mozilla/5.0"}, proxies=PROXY, timeout=30)
-    chart = r.json()["chart"]["result"][0]
-    ts, q = chart["timestamp"], chart["indicators"]["quote"][0]
-    out = []
-    for i,t in enumerate(ts):
-        if not q["close"][i]: continue
-        out.append({"date":dt.fromtimestamp(t).strftime("%Y-%m-%d"),
-                    "o":float(q["open"][i] or q["close"][i]),
-                    "h":float(q["high"][i] or q["close"][i]),
-                    "l":float(q["low"][i] or q["close"][i]),
-                    "c":float(q["close"][i])})
-    return out
+    try:
+        import requests
+        from datetime import datetime as dt
+        r = requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
+            params={"interval":"1d","range":range_},
+            headers={"User-Agent":"Mozilla/5.0"}, proxies=PROXY, timeout=30)
+        chart = r.json()["chart"]["result"][0]
+        ts, q = chart["timestamp"], chart["indicators"]["quote"][0]
+        out = []
+        for i,t in enumerate(ts):
+            if not q["close"][i]: continue
+            out.append({"date":dt.fromtimestamp(t).strftime("%Y-%m-%d"),
+                        "o":float(q["open"][i] or q["close"][i]),
+                        "h":float(q["high"][i] or q["close"][i]),
+                        "l":float(q["low"][i] or q["close"][i]),
+                        "c":float(q["close"][i])})
+        return out
+    except Exception as e:
+        print(f"[ERROR] 获取Yahoo K线失败: {e}", file=sys.stderr)
+        return []
 
 # ── 美股/港股报价 · 新浪 ──
 def us_quote_sina(ticker="AAPL"):
-    import requests
-    r = requests.get(f"https://hq.sinajs.cn/list=gb_{ticker.lower()}",
-        headers={"Referer":"https://finance.sina.com.cn/"}, timeout=10)
-    r.encoding = "gbk"
-    m = re.search(r'\"(.+)\"', r.text)
-    if not m: return {}
-    f = m.group(1).split(",")
-    if len(f) < 30: return {}
-    return {"name":f[0],"price":float(f[1]),"change_pct":float(f[2]),
-            "high":float(f[6]),"low":float(f[7]),
-            "high_52w":float(f[8] or 0),"low_52w":float(f[9] or 0),
-            "market_cap":float(f[12] or 0),"pe":float(f[14] or 0)}
+    try:
+        import requests
+        r = requests.get(f"https://hq.sinajs.cn/list=gb_{ticker.lower()}",
+            headers={"Referer":"https://finance.sina.com.cn/"}, timeout=10)
+        r.encoding = "gbk"
+        m = re.search(r'\"(.+)\"', r.text)
+        if not m: return {}
+        f = m.group(1).split(",")
+        if len(f) < 30: return {}
+        return {"name":f[0],"price":float(f[1]),"change_pct":float(f[2]),
+                "high":float(f[6]),"low":float(f[7]),
+                "high_52w":float(f[8] or 0),"low_52w":float(f[9] or 0),
+                "market_cap":float(f[12] or 0),"pe":float(f[14] or 0)}
+    except Exception as e:
+        print(f"[ERROR] 获取新浪美股报价失败: {e}", file=sys.stderr)
+        return {}
 
 # ── 美股/港股报价 · 腾讯 ──
 def global_quote_tencent(ticker="AAPL", market="us"):
-    import requests
-    prefix = "us" if market == "us" else "r_hk"
-    r = requests.get(f"https://qt.gtimg.cn/q={prefix}{ticker}", timeout=10)
-    r.encoding = "gbk"
-    m = re.search(r'\"(.+)\"', r.text)
-    if not m: return {}
-    f = m.group(1).split("~")
-    if len(f) < 50: return {}
-    return {"name":f[1],"price":float(f[3] or 0),"high":float(f[33] or 0),
-            "low":float(f[34] or 0),"high_52w":float(f[35] or 0),"low_52w":float(f[36] or 0),
-            "change_pct":float(f[32] or 0),"market_cap":float(f[44] or 0),"pe":float(f[53] or 0)}
+    try:
+        import requests
+        prefix = "us" if market == "us" else "r_hk"
+        r = requests.get(f"https://qt.gtimg.cn/q={prefix}{ticker}", timeout=10)
+        r.encoding = "gbk"
+        m = re.search(r'\"(.+)\"', r.text)
+        if not m: return {}
+        f = m.group(1).split("~")
+        if len(f) < 50: return {}
+        return {"name":f[1],"price":float(f[3] or 0),"high":float(f[33] or 0),
+                "low":float(f[34] or 0),"high_52w":float(f[35] or 0),"low_52w":float(f[36] or 0),
+                "change_pct":float(f[32] or 0),"market_cap":float(f[44] or 0),"pe":float(f[53] or 0)}
+    except Exception as e:
+        print(f"[ERROR] 获取腾讯全球报价失败: {e}", file=sys.stderr)
+        return {}
 
 # ── 工具 ──
 def to_chart_config(title, subtitle, data_dict, chart_type="line"):
@@ -99,18 +115,22 @@ def daily_to_monthly(data):
 def stock_search(keyword: str, count: int = 10) -> list[dict]:
     """支持中英文，返回 {code, name, mkt_num, market_name}
     mkt_num: 105=NASDAQ 106=NYSE 107=US_OTHER 116=HK"""
-    import requests
-    r = requests.get("https://searchapi.eastmoney.com/api/suggest/get",
-        params={"input":keyword,"type":14,"token":"D43BF722C8E33BDC906FB84D85E326E8","count":count},
-        timeout=10)
-    items = r.json().get("QuotationCodeTable",{}).get("Data",[])
-    out = []
-    mkt_map = {"105":"NASDAQ","106":"NYSE","107":"US_OTHER","116":"HK"}
-    for s in items:
-        m = str(s.get("MktNum",""))
-        if m not in mkt_map: continue
-        out.append({"code":s.get("Code"),"name":s.get("Name"),"mkt_num":int(m),"market_name":mkt_map[m]})
-    return out
+    try:
+        import requests
+        r = requests.get("https://searchapi.eastmoney.com/api/suggest/get",
+            params={"input":keyword,"type":14,"token":"D43BF722C8E33BDC906FB84D85E326E8","count":count},
+            timeout=10)
+        items = r.json().get("QuotationCodeTable",{}).get("Data",[])
+        out = []
+        mkt_map = {"105":"NASDAQ","106":"NYSE","107":"US_OTHER","116":"HK"}
+        for s in items:
+            m = str(s.get("MktNum",""))
+            if m not in mkt_map: continue
+            out.append({"code":s.get("Code"),"name":s.get("Name"),"mkt_num":int(m),"market_name":mkt_map[m]})
+        return out
+    except Exception as e:
+        print(f"[ERROR] 股票搜索失败: {e}", file=sys.stderr)
+        return []
 
 # ── 技术指标（纯Python，零依赖）──
 def _ema(vals, period):

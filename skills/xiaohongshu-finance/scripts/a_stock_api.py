@@ -12,22 +12,30 @@ import urllib.request, json, sys
 # ── mootdx K线 ──
 def get_a_kline(symbol="600519", freq=6, offset=130):
     """A股月K线。freq:4=日 5=周 6=月"""
-    from mootdx.quotes import Quotes
-    df = Quotes.factory(market='std', timeout=15).bars(symbol=symbol, frequency=freq, offset=offset)
-    return [{"date":f"{int(r.year):04d}-{int(r.month):02d}","o":float(r.open),
-             "h":float(r.high),"l":float(r.low),"c":float(r.close)} for _, r in df.iterrows()]
+    try:
+        from mootdx.quotes import Quotes
+        df = Quotes.factory(market='std', timeout=15).bars(symbol=symbol, frequency=freq, offset=offset)
+        return [{"date":f"{int(r.year):04d}-{int(r.month):02d}","o":float(r.open),
+                 "h":float(r.high),"l":float(r.low),"c":float(r.close)} for _, r in df.iterrows()]
+    except Exception as e:
+        print(f"[ERROR] 获取A股K线失败 (mootdx): {e}", file=sys.stderr)
+        return []
 
 # ── 百度K线（自带MA均线） ──
 def baidu_kline(code="600519"):
-    import requests
-    r = requests.get("https://finance.pae.baidu.com/selfselect/getstockquotation",
-        params={"all":"1","isIndex":"false","isStock":"true","newFormat":"1",
-                "group":"quotation_kline_ab","finClientType":"pc","code":code,"ktype":"1"},
-        headers={"Accept":"application/vnd.finance-web.v1+json",
-                 "Origin":"https://gushitong.baidu.com",
-                 "Referer":"https://gushitong.baidu.com/"}, timeout=10)
-    md = r.json()["Result"]["newMarketData"]
-    return {"keys": md["keys"], "rows": md["marketData"].split(";")}
+    try:
+        import requests
+        r = requests.get("https://finance.pae.baidu.com/selfselect/getstockquotation",
+            params={"all":"1","isIndex":"false","isStock":"true","newFormat":"1",
+                    "group":"quotation_kline_ab","finClientType":"pc","code":code,"ktype":"1"},
+            headers={"Accept":"application/vnd.finance-web.v1+json",
+                     "Origin":"https://gushitong.baidu.com",
+                     "Referer":"https://gushitong.baidu.com/"}, timeout=10)
+        md = r.json()["Result"]["newMarketData"]
+        return {"keys": md["keys"], "rows": md["marketData"].split(";")}
+    except Exception as e:
+        print(f"[ERROR] 获取百度K线失败: {e}", file=sys.stderr)
+        return {"keys": [], "rows": []}
 
 # ── 腾讯实时报价 ──
 def get_quotes(codes):
@@ -39,20 +47,24 @@ def get_quotes(codes):
         elif c.startswith("8"): prefixed.append(f"bj{c}")
         else: prefixed.append(f"sz{c}")
     url = f"https://qt.gtimg.cn/q={','.join(prefixed)}"
-    req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        raw = resp.read().decode("gbk")
-    out = {}
-    for line in raw.strip().split(";"):
-        if "=" not in line or '"' not in line: continue
-        key = line.split("=")[0].split("_")[-1]
-        f = line.split('"')[1].split("~")
-        if len(f) < 50: continue
-        out[key] = {"name":f[1],"price":float(f[3] or 0),"high":float(f[33] or 0),
-                    "low":float(f[34] or 0),"change_pct":float(f[32] or 0),
-                    "pe_ttm":float(f[39] or 0),"pb":float(f[46] or 0),
-                    "mcap_yi":float(f[44] or 0),"turnover":float(f[38] or 0)}
-    return out
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode("gbk")
+        out = {}
+        for line in raw.strip().split(";"):
+            if "=" not in line or '"' not in line: continue
+            key = line.split("=")[0].split("_")[-1]
+            f = line.split('"')[1].split("~")
+            if len(f) < 50: continue
+            out[key] = {"name":f[1],"price":float(f[3] or 0),"high":float(f[33] or 0),
+                        "low":float(f[34] or 0),"change_pct":float(f[32] or 0),
+                        "pe_ttm":float(f[39] or 0),"pb":float(f[46] or 0),
+                        "mcap_yi":float(f[44] or 0),"turnover":float(f[38] or 0)}
+        return out
+    except Exception as e:
+        print(f"[ERROR] 获取腾讯报价失败: {e}", file=sys.stderr)
+        return {}
 
 # ── 工具 ──
 # ── 工具 ──

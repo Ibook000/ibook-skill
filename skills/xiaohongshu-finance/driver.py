@@ -35,18 +35,18 @@ _FONT_DIR = SKILL_DIR / "fonts"
 
 
 def _load_font_files():
-    """扫描 fonts/ 目录，返回 {字体名: 字体文件名} 的映射（不带路径）
-    
-    如果 fontTools 未安装，返回空字典，自动回退到系统字体。
-    """
-    # 尝试导入 fontTools，失败则跳过
+    """扫描 fonts/ 目录，懒加载，返回 {字体名: 字体文件名}"""
+    global _FONT_FILES
+    if _FONT_FILES is not None:
+        return _FONT_FILES
+
+    _FONT_FILES = {}
     try:
         from fontTools.ttLib import TTFont, TTCollection
     except ImportError:
         print("  [WARN] fontTools 未安装，字体文件加载被跳过，将使用系统字体")
-        return {}
+        return _FONT_FILES
 
-    font_files = {}
     if _FONT_DIR.exists():
         for f in _FONT_DIR.iterdir():
             if f.suffix == ".ttc":
@@ -54,27 +54,26 @@ def _load_font_files():
                     coll = TTCollection(str(f))
                     for font in coll.fonts:
                         for record in font['name'].names:
-                            if record.nameID == 1:  # Font Family Name
+                            if record.nameID == 1:
                                 family = record.toUnicode()
                                 if "SC" in family or "CN" in family:
-                                    font_files[family] = f.name
+                                    _FONT_FILES[family] = f.name
                                 break
-                except Exception as e:
-                    print(f"  [WARN] 无法读取字体文件 {f.name}: {e}")
+                except Exception:
+                    pass
             elif f.suffix in (".ttf", ".otf", ".woff", ".woff2"):
                 try:
                     font = TTFont(str(f))
                     for record in font['name'].names:
-                        if record.nameID == 1:  # Font Family Name
+                        if record.nameID == 1:
                             family = record.toUnicode()
-                            font_files[family] = f.name
+                            _FONT_FILES[family] = f.name
                             break
-                except Exception as e:
-                    print(f"  [WARN] 无法读取字体文件 {f.name}: {e}")
-    return font_files
+                except Exception:
+                    pass
+    return _FONT_FILES
 
-
-_FONT_FILES = _load_font_files()
+_FONT_FILES = None
 
 
 # 默认输出目录：output/YYYY-MM-DD/
@@ -114,18 +113,18 @@ _AVAILABLE_FONTS = _detect_available_fonts()
 # 渲染时 fallback 链用 fc-list 检测结果裁剪，未安装的字体自动剔除
 _FONT_DEFS = {
     "default": {
-        "display": ["Alibaba PuHuiTi 3.0"],
-        "fallback": ["Noto Sans CJK SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", "sans-serif"],
-        "face_name": "Alibaba PuHuiTi 3.0",
+        "display": ["PingFang SC", "Hiragino Sans GB"],
+        "fallback": ["Noto Sans CJK SC", "Alibaba PuHuiTi 3.0", "Microsoft YaHei", "WenQuanYi Micro Hei", "sans-serif"],
+        "face_name": "PingFang SC",
     },
     "modern": {
         "display": ["PingFang SC"],
-        "fallback": ["Noto Sans CJK SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", "sans-serif"],
+        "fallback": ["Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "sans-serif"],
         "face_name": "PingFang SC",
     },
     "classic": {
         "display": ["Source Han Serif SC", "Noto Serif CJK SC"],
-        "fallback": ["WenQuanYi Zen Hei", "Microsoft YaHei", "Droid Sans Fallback", "serif"],
+        "fallback": ["Songti SC", "STSong", "WenQuanYi Zen Hei", "Microsoft YaHei", "serif"],
         "face_name": "Noto Serif CJK SC",
     },
     "simple": {
@@ -202,7 +201,7 @@ def get_font(font_name: str, font_files: dict | None = None):
     """获取字体配置，返回 (family_chain, face_css)"""
     preset_name = font_name if font_name in _FONT_DEFS else "default"
     if font_files is None:
-        font_files = _FONT_FILES
+        font_files = _load_font_files()
     return _resolve_family(preset_name), _build_face_css(preset_name, font_files)
 
 
