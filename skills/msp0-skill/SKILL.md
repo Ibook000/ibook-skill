@@ -72,9 +72,13 @@ When the user asks to choose a free pin, prefer pins not listed above. If the us
 
 When the user explicitly says the board is LCKFB Tianmengxing MSPM0G3507:
 
+- Confirm the board revision before giving physical header positions. For the verified V1.0.2 front-view map, use `references/MSPM0G3507_Pinout_Mapping.md`.
+- Describe V1.0.2 connections using the board silk names (`A00`, `A01`, `B14`, `B11`, `CLK`, `DIO`, `RST`) and, when helpful, the front-view side/row/column. Do not invent or reuse U21/U22 pin numbers from another board or revision.
 - Avoid choosing A21/PA21, A23/PA23, A02/PA02, A18/PA18, A10/PA10, and A11/PA11 for ordinary user-requested pin assignments unless the user asks for those pins or the local project already deliberately uses them.
 - If the user asks to drive or reuse one of those pins, remind them that the Tianmengxing documentation marks these as special pins and says they should not be used unless necessary.
-- Do not silently move an existing project away from these pins. Explain the board caveat first, then ask or proceed according to the user's intent.
+- Do not assume PB11/PB14 are occupied by an onboard OLED, or that every Tianmengxing revision has an onboard CH340, unless the matching schematic or hardware test proves it.
+- Keep the MSPM0G3519 custom-board occupation table separate; never apply its OLED/IMU/Flash/wireless/WS2812/buzzer assignments to Tianmengxing MSPM0G3507.
+- Do not silently move an existing project away from special pins. Explain the board caveat first, then ask or proceed according to the user's intent.
 
 ## Project Shape Checks
 
@@ -85,7 +89,7 @@ When the user explicitly says the board is LCKFB Tianmengxing MSPM0G3507:
 
 ## Keil Project Checks
 
-- Treat `system.syscfg` and `ti_msp_dl_config.c` / `ti_msp_dl_config.h` as the configuration source surface for Keil-based MSPM0 projects that keep SysConfig outputs at the project root.
+- Treat `system.syscfg` as the configuration source of truth for Keil-based MSPM0 projects. Root-level `ti_msp_dl_config.c` / `ti_msp_dl_config.h` files are generated outputs: inspect them to confirm names and settings, but do not use them as the manual configuration entrypoint.
 - Treat a Keil `.uvprojx` as the project entrypoint, the scatter file as the linker source of truth, and `Objects/`, `Listings/`, `*.uvoptx`, build logs, and generated outputs as inspection-only unless a request explicitly targets them.
 - For a project's application code, follow its own source layout rather than assuming CCS defaults.
 
@@ -183,7 +187,8 @@ Do not treat `ccs-dss` as the OpenOCD path. For CMake/GCC/OpenOCD projects, keep
 
 ## 助力全国大学生电子设计竞赛 (NUEDC)
 
-本 Skill 对立创·天猛星 MSPM0G3507 开发板进行了深入的引脚和外设适配，特别是在全国大学生电子设计竞赛（NUEDC）等高强度开发场景中，可极大降低底层配置的试错成本：
-- 内置 `references/MSPM0G3507_Pinout_Mapping.md` 提供完整引脚复用和避坑指南。
-- 引导 Agent 避开特殊系统引脚（如 PA18 BSL、PA5/PA6 等），自动根据天猛星板载 CH340E、OLED 等分配通信总线（UART0/SPI1/I2C0）。
+本 Skill 提供立创·天猛星 MSPM0G3507 的版本化接线参考和 MSPM0 SysConfig/DriverLib 工作流，特别适合全国大学生电子设计竞赛（NUEDC）等高强度开发场景：
+- `references/MSPM0G3507_Pinout_Mapping.md` 记录已依据官方引脚图核对的 V1.0.2 正面丝印与排针行列；其他版本必须重新核对。
+- 引导 Agent 区分 MCU 复用能力、开发板物理排针和板载器件连接，不再假设 U21/U22 编号、板载 CH340E 或 OLED。
+- 对 PA18 BSL、PA5/PA6 HFXT、PA19/PA20 SWD 等系统引脚保持谨慎，并要求用匹配版本的 PDF、原理图或实测确认板级连接。
 - 加速外设配置验证速度，加油，电赛人！

@@ -195,17 +195,34 @@ ssh 连到 192.168.1.100
 
 
 ### 🦾 msp0-skill
-给 AI Agent 的 **TI MSPM0 / 天猛星 G3507** 固件开发套件。专为底层硬件开发、全国大学生电子设计竞赛（NUEDC）等场景打磨的 SysConfig 代码生成规则集。
 
-- ⚡️ **SysConfig 操控**：严格限定 AI 只修改 `.syscfg` 源码，杜绝手改生成代码造成的覆盖灾难。
-- 🎯 **天猛星管脚避坑**：内置立创·天猛星 G3507 引脚占用表，自动规避 PA18 BSL、PA5/PA6 晶振等特殊引脚。
-- 🛠 **开箱即用示例**：内含 `led_blink`, `uart_blocking_tx`, 甚至包含带有 OLED 驱动、六轴陀螺仪和全套小游戏逻辑的完整 `oledui_full_g3519` 工程参考。
-- 🔍 **开发辅助脚本**：自带 Python 脚本（`check_syscfg.py`, `ccs_dss_debug.py`），能让 AI 帮你做静态管脚排错，甚至通过命令行读取探针状态。
+> 面向电赛同学的 TI MSPM0 / 天猛星 G3507 AI 固件开发 Skill
 
-```bash
-# Agent 工作示例
-"帮我配一下天猛星板载的 PB22 呼吸灯（PWM），顺便把 PA10/PA11 串口打通跑个 Hello World"
+让 AI Agent 能够理解并安全修改 MSPM0 项目的 `.syscfg`、引脚复用、时钟树和 DriverLib 应用代码，而不是直接乱改 SysConfig 生成文件。
+
+**核心能力：**
+
+- ⚡️ **配置和修改 SysConfig**：协助配置 GPIO、UART、PWM、Timer、ADC、I2C、SPI、DMA、时钟和中断。
+- 🎯 **引脚与接线检查**：核对 `.syscfg`、生成头文件、开发板 PDF 和真实接线，规避 SWD、HFXT、BSL 及板卡版本差异。
+- 🛡️ **保护生成流程**：坚持修改 `.syscfg` 源文件，再通过 CCS/SysConfig 重新生成，避免手改 `ti_msp_dl_config.c/h` 被覆盖。
+- 🔍 **工程级排错**：检查 SDK、编译器、引脚冲突、I2C 上拉、供电、下载器和程序逻辑，并通过真实构建验证结果。
+- 🛠 **示例与工具**：包含 LED、UART、PWM，以及自定义 MSPM0G3519 OLED UI 工程参考，并提供 `check_syscfg.py`、串口和 CCS DSS 调试脚本。
+
+**主要面向：** 全国大学生电子设计竞赛（NUEDC）、智能车、机器人、课程设计以及使用 MSPM0G3507/G3519 的嵌入式开发者。
+
+```text
+/msp0-skill 检查当前项目的 SysConfig 和引脚配置是否正确，有无错误和踩坑
 ```
+
+<p align="center">
+  <img src="skills/msp0-skill/assets/readme/msp0-installation.png" width="88%" alt="安装并加载 msp0-skill">
+</p>
+
+<p align="center">
+  <img src="skills/msp0-skill/assets/readme/msp0-audit-report.png" width="88%" alt="AI 检查 MSPM0 SysConfig、引脚和程序问题">
+</p>
+
+[→ 查看详细说明](./skills/msp0-skill/README.md) | [→ 查看 SKILL.md](./skills/msp0-skill/SKILL.md)
 
 ## 仓库结构
 
@@ -234,10 +251,16 @@ ibook-skill/
     │   ├── SKILL.md                   ← 图片搜索 Skill
     │   ├── README.md                  ← 说明文档
     │   └── scripts/                   ← 搜索脚本
-    └── chart-visualization/
-        ├── SKILL.md                   ← 图表可视化 Skill
-        ├── scripts/                   ← 生成脚本
-        └── references/                ← 参考资料
+    ├── chart-visualization/
+    │   ├── SKILL.md                   ← 图表可视化 Skill
+    │   ├── scripts/                   ← 生成脚本
+    │   └── references/                ← 参考资料
+    └── msp0-skill/
+        ├── SKILL.md                   ← MSPM0 Agent 规则
+        ├── README.md                  ← 电赛向使用说明和效果截图
+        ├── examples/                  ← LED、UART、PWM、完整工程示例
+        ├── scripts/                   ← SysConfig 检查和调试工具
+        └── references/                ← 引脚、SysConfig、DriverLib 知识库
 ```
 
 ---
@@ -250,11 +273,11 @@ ibook-skill/
 
 > 从 https://github.com/Ibook000/ibook-skill 安装 skill，把我需要的加进去
 
-或者手动复制对应 `SKILL.md` 到 `~/.hermes/skills/` 目录。
+或者把对应 Skill 的完整目录复制到 `~/.hermes/skills/`。如果 Skill 包含 `references/`、`scripts/`、`assets/` 或 `examples/`，不要只复制 `SKILL.md`。
 
 ### 给其他 AI Agent 用户
 
-把需要的 `SKILL.md` 放到你的 Agent 的 skills 目录即可。每个 Skill 文件都是自包含的，不依赖外部运行时。
+把需要的 Skill 目录完整复制到 Agent 的 skills 目录。简单 Skill 可能只有一个 `SKILL.md`；像 `msp0-skill` 这样的工程型 Skill 还依赖同目录下的参考资料、示例和辅助脚本。
 
 ---
 
